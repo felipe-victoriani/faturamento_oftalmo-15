@@ -1,0 +1,82 @@
+{
+  "rules": {
+    "faturamento": {
+      "tabelas": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$convenioId": {
+          ".validate": "newData.hasChildren(['nome'])",
+          "nome": {
+            ".validate": "newData.isString() && newData.val().length > 0"
+          },
+          "registros": {
+            "$registroId": {
+              ".validate": "newData.hasChildren()",
+              "producao": {
+                ".validate": "newData.isString() || !newData.exists()"
+              },
+              "nFatura": {
+                ".validate": "newData.isString() || !newData.exists()"
+              },
+              "dataProtocolo": {
+                ".validate": "newData.isString() || !newData.exists()"
+              },
+              "valor": {
+                ".validate": "newData.isNumber() || !newData.exists()"
+              },
+              "nNF": {
+                ".validate": "newData.isString() || !newData.exists()"
+              },
+              "dataNF": {
+                ".validate": "newData.isString() || !newData.exists()"
+              },
+              "valorBruto": {
+                ".validate": "newData.isNumber() || !newData.exists()"
+              },
+              "impostos": {
+                ".validate": "newData.isNumber() || !newData.exists()"
+              },
+              "valorLiquido": {
+                ".validate": "newData.isNumber() || !newData.exists()"
+              },
+              "valorRecebido": {
+                ".validate": "newData.isNumber() || !newData.exists()"
+              },
+              "dataRecebimento": {
+                ".validate": "newData.isString() || !newData.exists()"
+              },
+              "observacoes": {
+                ".validate": "newData.isNumber() || !newData.exists()"
+              },
+              "recurso": {
+                ".validate": "newData.isString() || !newData.exists()"
+              },
+              "createdAt": {
+                ".validate": "newData.isNumber() || !newData.exists()"
+              },
+              "updatedAt": {
+                ".validate": "newData.isNumber() || !newData.exists()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        }
+      },
+      "configuracoes": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "percentualImposto": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
+      "$other": {
+        ".validate": false
+      }
+    }
+  }
+}
