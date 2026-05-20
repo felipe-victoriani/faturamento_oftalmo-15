@@ -2057,6 +2057,55 @@
     </dialog>
 
     <!-- ============================================================
+       MODAL DE SENHA - PROTEÇÃO REPASSES
+       ============================================================ -->
+    <dialog id="modal-senha-repasses" class="modal modal--senha">
+      <div class="modal__conteudo">
+        <header class="modal__cabecalho">
+          <h2 class="modal__titulo">🔒 Acesso Protegido</h2>
+          <button
+            type="button"
+            id="btn-fechar-senha"
+            class="modal__btn-fechar"
+            aria-label="Fechar"
+          >
+            ✕
+          </button>
+        </header>
+
+        <form id="form-senha-repasses" class="form-senha">
+          <p class="form-senha__descricao">
+            O módulo de Repasses Médicos é protegido.
+            <br />Digite a senha para continuar:
+          </p>
+
+          <div class="campo-grupo">
+            <label for="input-senha-repasses" class="campo-grupo__label">
+              Senha de Acesso
+            </label>
+            <input
+              type="password"
+              id="input-senha-repasses"
+              class="campo-grupo__input"
+              placeholder="Digite a senha"
+              autocomplete="off"
+              required
+            />
+          </div>
+
+          <div class="modal__acoes">
+            <button type="button" id="btn-cancelar-senha" class="btn-secundario">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-primario">
+              <span class="btn-primario__texto">Acessar</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
+    <!-- ============================================================
        NOTIFICAÇÕES TOAST
        Injetadas por ui.js, removidas automaticamente
        ============================================================ -->

@@ -1282,7 +1282,23 @@ dialog::backdrop {
     color 0.2s;
 }
 
-.modal__fechar:hover {
+.modal__btn-fechar {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--raio);
+  color: var(--texto-secundario);
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.modal__fechar:hover,
+.modal__btn-fechar:hover {
   background-color: var(--bg-hover);
   color: var(--texto-primario);
 }
@@ -1422,6 +1438,50 @@ dialog::backdrop {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+/* Modal de Senha para Repasses */
+.modal--senha {
+  max-width: 480px;
+}
+
+.modal--senha .modal__titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-senha {
+  padding: 1.5rem;
+}
+
+.form-senha__descricao {
+  color: var(--texto-secundario);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.form-senha .campo-grupo {
+  margin-bottom: 1.5rem;
+}
+
+.form-senha .campo-grupo__input {
+  text-align: center;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+}
+
+.form-senha .campo-grupo__input:focus {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+  border-color: var(--acento);
+}
+
+.modal--senha .modal__acoes {
+  border-top: 1px solid var(--borda);
+  background-color: var(--bg-hover);
 }
 
 /* ============================================================

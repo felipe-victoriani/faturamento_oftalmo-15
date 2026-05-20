@@ -226,8 +226,72 @@
     document
       .getElementById("btn-nav-repasses")
       .addEventListener("click", () => {
-        mostrarView("view-repasses");
-        Repasses.inicializar();
+        abrirModalSenhaRepasses();
+      });
+
+    /* ---- Modal de senha para Repasses ---- */
+    function abrirModalSenhaRepasses() {
+      const modal = document.getElementById("modal-senha-repasses");
+      const inputSenha = document.getElementById("input-senha-repasses");
+
+      modal.showModal();
+      setTimeout(() => inputSenha.focus(), 100);
+    }
+
+    function fecharModalSenhaRepasses() {
+      const modal = document.getElementById("modal-senha-repasses");
+      const inputSenha = document.getElementById("input-senha-repasses");
+
+      modal.close();
+      inputSenha.value = "";
+    }
+
+    function validarSenhaRepasses(senha) {
+      // Senha padrão: "faturamento15" (você pode alterar aqui)
+      const senhaCorreta = "faturamento15";
+      return senha === senhaCorreta;
+    }
+
+    // Event listeners do modal de senha
+    document
+      .getElementById("form-senha-repasses")
+      .addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        const inputSenha = document.getElementById("input-senha-repasses");
+        const senha = inputSenha.value;
+
+        if (validarSenhaRepasses(senha)) {
+          fecharModalSenhaRepasses();
+          mostrarView("view-repasses");
+          Repasses.inicializar();
+          Ui.mostrarToast("Acesso concedido", "sucesso");
+        } else {
+          Ui.mostrarToast("Senha incorreta", "erro");
+          inputSenha.value = "";
+          inputSenha.focus();
+        }
+      });
+
+    document
+      .getElementById("btn-fechar-senha")
+      .addEventListener("click", () => {
+        fecharModalSenhaRepasses();
+      });
+
+    document
+      .getElementById("btn-cancelar-senha")
+      .addEventListener("click", () => {
+        fecharModalSenhaRepasses();
+      });
+
+    // Fechar ao clicar no backdrop
+    document
+      .getElementById("modal-senha-repasses")
+      .addEventListener("click", (e) => {
+        if (e.target.id === "modal-senha-repasses") {
+          fecharModalSenhaRepasses();
+        }
       });
 
     /* ---- Logout ---- */
