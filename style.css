@@ -50,6 +50,12 @@
   --secao-financeiro-bg-cell: #faf5ff;
   --secao-financeiro-texto: #7c3aed;
 
+  /* Seções de repasses */
+  --secao-deducoes-bg: #fb923c;
+  --secao-deducoes-texto: #92400e;
+  --secao-partilha-bg: #86efac;
+  --secao-partilha-texto: #14532d;
+
   /* Tipografia */
   --fonte-display: "Instrument Serif", serif;
   --fonte-ui: "Geist", sans-serif;
@@ -1039,27 +1045,32 @@ input[type="number"] {
   position: relative;
   padding: 0.5rem 0.75rem;
   border-radius: var(--raio-sm);
-  transition: background-color 0.2s;
+  transition: filter 0.2s;
   min-height: 36px;
   display: inline-block;
   min-width: 80px;
 }
 
 .celula-editavel:hover {
-  background-color: var(--acento-claro);
-  box-shadow: 0 0 0 1px var(--acento) inset;
+  filter: brightness(0.95);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1) inset;
 }
 
 .celula-editavel:focus {
-  background-color: var(--bg-input);
   outline: 2px solid var(--borda-foco);
   outline-offset: -1px;
+  filter: brightness(0.9);
   box-shadow: 0 0 0 1px var(--borda-foco) inset;
 }
 
 .celula-editavel:empty::before {
   content: "—";
   color: var(--texto-desabilitado);
+}
+
+/* Aplicar backgrounds de seção mesmo em células com classes editáveis/calculadas */
+.tabela-repasse .celula-calculada {
+  font-weight: 500;
 }
 
 /* Células readonly (impostos, valor líquido) */
@@ -1885,4 +1896,409 @@ dialog::backdrop {
 
 .footer-sistema__status time {
   font-family: var(--fonte-mono);
+}
+
+/* ============================================================
+  15. COMPONENTE: Repasses Médicos
+      Controles de seleção, cards de resumo, tabela de partilha
+   ============================================================ */
+
+/* Barra de controles: seletor de médico, mês e botão carregar */
+.repasses-controles {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 20px 24px 0;
+  flex-wrap: wrap;
+}
+
+/* Campo de reembolso clínica — acima dos cards */
+.repasses-reembolso {
+  padding: 16px 24px 0;
+  max-width: 260px;
+}
+
+/* Grid dos 4 cards de resumo do repasse */
+.repasses-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px 24px;
+}
+
+/* Cabeçalho de grupo: Deduções */
+.cabecalho-secao--deducoes {
+  background: var(--secao-deducoes-bg);
+  color: var(--secao-deducoes-texto);
+}
+
+/* Cabeçalho de grupo: Partilha */
+.cabecalho-secao--partilha {
+  background: var(--secao-partilha-bg);
+  color: var(--secao-partilha-texto);
+}
+
+/* Estrutura básica da tabela de repasses */
+.tabela-repasse {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+/* Ocultar cabeçalho - cada célula tem seu label */
+.tabela-repasse thead {
+  display: none;
+}
+
+.tabela-repasse tbody tr {
+  border-bottom: 1px solid var(--borda);
+  transition: background-color 0.15s;
+}
+
+.tabela-repasse tbody tr:hover {
+  background-color: var(--bg-hover);
+}
+
+.tabela-repasse tbody td,
+.tabela-repasse tfoot td {
+  padding: 0.625rem 0.75rem;
+  vertical-align: middle;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+/* Labels e valores empilhados dentro das células */
+.tabela-repasse td {
+  display: table-cell;
+}
+
+.tabela-repasse .celula-label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  color: rgba(0, 0, 0, 0.5);
+  margin-bottom: 0.25rem;
+}
+
+.tabela-repasse .celula-valor {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.tabela-repasse .celula-calculada.celula-valor {
+  font-weight: 500;
+}
+
+/* Células editáveis com interação */
+.tabela-repasse .celula-editavel.celula-valor {
+  cursor: text;
+  border-radius: 4px;
+  padding: 0.375rem 0.625rem;
+  margin: -0.375rem -0.625rem;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  position: relative;
+  font-weight: 500;
+}
+
+.tabela-repasse .celula-editavel.celula-valor::after {
+  content: "✎";
+  position: absolute;
+  right: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: var(--acento);
+}
+
+.tabela-repasse .celula-editavel.celula-valor:hover {
+  background-color: rgba(255, 255, 255, 0.7);
+  border-color: var(--acento);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding-right: 1.75rem;
+}
+
+.tabela-repasse .celula-editavel.celula-valor:hover::after {
+  opacity: 0.6;
+}
+
+.tabela-repasse .celula-editavel.celula-valor:focus {
+  background-color: white;
+  border-color: var(--acento);
+  outline: 2px solid var(--acento);
+  outline-offset: 1px;
+  box-shadow: 0 2px 6px rgba(27, 63, 110, 0.15);
+}
+
+.tabela-repasse .celula-editavel.celula-valor:focus::after {
+  opacity: 0;
+}
+
+.tabela-repasse tfoot {
+  font-weight: 600;
+  background-color: var(--bg-hover);
+}
+
+.tabela-repasse tfoot td,
+.tabela-repasse tfoot th {
+  border-top: 2px solid var(--borda);
+  font-family: var(--fonte-mono);
+}
+
+.tabela-repasse tfoot th {
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+}
+
+.tabela-repasse tfoot .celula-valor {
+  font-weight: 700;
+}
+
+/* Cores de fundo das células por seção (iguais aos cabeçalhos) */
+/* Coluna 3: Valor Bruto (azul - Dados da Produção) */
+.tabela-repasse tbody tr td:nth-child(3),
+.tabela-repasse tbody tr td:nth-child(3).celula-editavel,
+.tabela-repasse tbody tr td:nth-child(3).celula-editavel:hover,
+.tabela-repasse tbody tr td:nth-child(3).celula-editavel:focus {
+  background-color: var(--secao-producao-bg) !important;
+}
+
+/* Colunas 4, 5, 6: Impostos, Custos, Taxas (laranja - Deduções) */
+.tabela-repasse tbody tr td:nth-child(4),
+.tabela-repasse tbody tr td:nth-child(4).celula-editavel,
+.tabela-repasse tbody tr td:nth-child(4).celula-editavel:hover,
+.tabela-repasse tbody tr td:nth-child(4).celula-editavel:focus,
+.tabela-repasse tbody tr td:nth-child(5),
+.tabela-repasse tbody tr td:nth-child(5).celula-editavel,
+.tabela-repasse tbody tr td:nth-child(5).celula-editavel:hover,
+.tabela-repasse tbody tr td:nth-child(5).celula-editavel:focus,
+.tabela-repasse tbody tr td:nth-child(6),
+.tabela-repasse tbody tr td:nth-child(6).celula-editavel,
+.tabela-repasse tbody tr td:nth-child(6).celula-editavel:hover,
+.tabela-repasse tbody tr td:nth-child(6).celula-editavel:focus {
+  background-color: var(--secao-deducoes-bg) !important;
+}
+
+/* Força laranja nas células editáveis de deduções por data-campo */
+.tabela-repasse tbody tr td[data-campo="impostos"],
+.tabela-repasse tbody tr td[data-campo="impostos"]:hover,
+.tabela-repasse tbody tr td[data-campo="impostos"]:focus,
+.tabela-repasse tbody tr td[data-campo="custosPacotes"],
+.tabela-repasse tbody tr td[data-campo="custosPacotes"]:hover,
+.tabela-repasse tbody tr td[data-campo="custosPacotes"]:focus,
+.tabela-repasse tbody tr td[data-campo="taxasCartao"],
+.tabela-repasse tbody tr td[data-campo="taxasCartao"]:hover,
+.tabela-repasse tbody tr td[data-campo="taxasCartao"]:focus {
+  background-color: var(--secao-deducoes-bg) !important;
+}
+
+/* Colunas 7, 8, 9: Valor Líquido, Rep. Clínica, Rep. Médico (verde - Partilha) */
+.tabela-repasse tbody tr td:nth-child(7),
+.tabela-repasse tbody tr td:nth-child(7).celula-calculada,
+.tabela-repasse tbody tr td:nth-child(8),
+.tabela-repasse tbody tr td:nth-child(8).celula-calculada,
+.tabela-repasse tbody tr td:nth-child(9),
+.tabela-repasse tbody tr td:nth-child(9).celula-calculada {
+  background-color: var(--secao-partilha-bg) !important;
+}
+
+/* Totalizadores mantêm as mesmas cores */
+.tabela-repasse tfoot td:nth-child(2) {
+  background-color: var(--secao-producao-bg) !important;
+}
+
+.tabela-repasse tfoot td:nth-child(3),
+.tabela-repasse tfoot td:nth-child(4),
+.tabela-repasse tfoot td:nth-child(5) {
+  background-color: var(--secao-deducoes-bg) !important;
+}
+
+.tabela-repasse tfoot td:nth-child(6),
+.tabela-repasse tfoot td:nth-child(7),
+.tabela-repasse tfoot td:nth-child(8) {
+  background-color: var(--secao-partilha-bg) !important;
+}
+
+/* Linha de convênio sem dados de faturamento no mês */
+.linha-repasse--sem-dados {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+/* Linha de convênio com dados — borda verde à esquerda */
+.linha-repasse--com-dados {
+  border-left: 3px solid var(--pago);
+}
+
+/* Linha de lançamento avulso - amarelo só na primeira célula (descrição) */
+.linha-repasse--avulsa td:first-child {
+  background-color: #fffbeb;
+}
+
+/* Segunda célula (mês) também amarela */
+.linha-repasse--avulsa td:nth-child(2) {
+  background-color: #fffbeb;
+}
+
+/* Tags de categoria nas linhas avulsas */
+.tag-categoria {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--fonte-ui);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  margin-left: 6px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.tag-categoria--cirurgia_particular {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.tag-categoria--caixa_consultorio {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.tag-categoria--reembolso {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.tag-categoria--repasse_terceiro {
+  background: #fce7f3;
+  color: #9f1239;
+}
+
+.tag-categoria--desconto {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.tag-categoria--outro {
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+/* Célula editável na tabela de repasses */
+.tabela-repasse .celula-editavel {
+  cursor: text;
+  position: relative;
+}
+
+.celula-editavel:hover {
+  filter: brightness(0.95);
+}
+
+.celula-editavel:focus {
+  outline: 2px solid var(--borda-foco);
+  outline-offset: -2px;
+  filter: brightness(0.9);
+}
+
+/* Célula calculada (não editável) */
+.celula-calculada {
+  font-weight: 500;
+  font-weight: 500;
+}
+
+/* Células de ação na tabela de repasses */
+.celula-acoes {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icone {
+  padding: 6px;
+  border-radius: var(--raio-sm);
+  transition: background-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icone svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-editar-avulso:hover {
+  background-color: var(--secao-partilha-bg);
+}
+
+.btn-excluir-avulso:hover {
+  background-color: var(--pendente-bg);
+  color: var(--pendente);
+}
+
+/* Form de avulso: ajustes específicos */
+.form-avulso {
+  padding: 1.5rem;
+  max-height: calc(90vh - 180px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.form-avulso .form-edicao__grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.form-avulso .campo-grupo--largo {
+  grid-column: 1 / -1;
+}
+
+.campo-grupo__nota {
+  font-size: 0.75rem;
+  color: var(--texto-secundario);
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.campo-grupo__output {
+  display: block;
+  padding: 10px 12px;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-sm);
+  background-color: var(--bg-input);
+  font-family: var(--fonte-mono);
+  font-size: 0.9375rem;
+  color: var(--texto-primario);
+  font-weight: 500;
+}
+
+/* Responsividade */
+@media (max-width: 1024px) {
+  .repasses-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .repasses-controles {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .repasses-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .form-avulso .form-edicao__grid {
+    grid-template-columns: 1fr;
+  }
 }

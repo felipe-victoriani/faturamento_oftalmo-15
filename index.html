@@ -420,6 +420,31 @@
               </span>
               Dashboard
             </button>
+            <button
+              type="button"
+              id="btn-nav-repasses"
+              class="nav-principal__item"
+              data-view="repasses"
+            >
+              <span aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </span>
+              Repasses
+            </button>
           </nav>
 
           <!-- Ações do header -->
@@ -707,6 +732,187 @@
               aria-label="Ir para próxima página"
             >
               Próxima →
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================================================
+         VIEW: REPASSES
+         Oculta por padrão. Ativada pela nav principal.
+         Controlada por repasses.js via window.Repasses.
+         ============================================================ -->
+      <div
+        id="view-repasses"
+        class="view view--oculta"
+        aria-label="Repasses médicos"
+      >
+        <!-- Barra de controles: seleção de médico e mês -->
+        <div class="repasses-controles">
+          <div class="campo-grupo">
+            <label class="campo-grupo__label" for="select-medico">Médico</label>
+            <select id="select-medico" name="medico" class="campo-grupo__input">
+              <option value="">Selecione um médico...</option>
+              <!-- Populado por repasses.js -->
+            </select>
+          </div>
+
+          <div class="campo-grupo">
+            <label class="campo-grupo__label" for="select-mes-repasse"
+              >Mês de referência</label
+            >
+            <select
+              id="select-mes-repasse"
+              name="mesRepasse"
+              class="campo-grupo__input"
+            >
+              <!-- Populado por repasses.js com os últimos 24 meses -->
+            </select>
+          </div>
+
+          <button type="button" id="btn-carregar-repasse" class="btn-primario">
+            Carregar
+          </button>
+
+          <button
+            type="button"
+            id="btn-gerenciar-medicos"
+            class="btn-secundario"
+          >
+            Gerenciar Médicos
+          </button>
+        </div>
+
+        <!-- Campo de reembolso clínica (valor manual, afeta o card Líquido a Receber) -->
+        <div class="repasses-reembolso">
+          <label class="campo-grupo__label" for="campo-reembolso-clinica">
+            Reembolso Clínica (R$)
+          </label>
+          <input
+            type="number"
+            id="campo-reembolso-clinica"
+            name="reembolsoClinica"
+            class="campo-grupo__input"
+            step="0.01"
+            min="0"
+            placeholder="0,00"
+          />
+        </div>
+
+        <!-- Cards de resumo do repasse -->
+        <section class="repasses-cards" aria-label="Resumo do repasse">
+          <!-- 4 <article> gerados por repasses.js -->
+        </section>
+
+        <!-- Área da tabela de repasse -->
+        <section
+          class="area-tabela"
+          aria-label="Tabela de repasse do médico selecionado"
+        >
+          <!-- Loading skeleton (mesmo padrão do módulo de faturamento) -->
+          <div
+            id="loading-repasse"
+            class="loading-skeleton"
+            role="status"
+            aria-label="Carregando repasse..."
+            hidden
+          ></div>
+
+          <!-- Tabela -->
+          <div
+            class="tabela-wrapper"
+            role="region"
+            aria-label="Tabela de repasse"
+            tabindex="0"
+          >
+            <table id="tabela-repasse" class="tabela-repasse">
+              <caption class="tabela-repasse__caption">
+                Repasse —
+                <span id="caption-medico-repasse"></span>
+                —
+                <time id="caption-mes-repasse" datetime=""></time>
+              </caption>
+              <thead class="tabela-repasse__cabecalho">
+                <!-- Linha 1: grupos de colunas -->
+                <tr class="cabecalho-secoes">
+                  <th
+                    scope="colgroup"
+                    colspan="3"
+                    class="cabecalho-secao cabecalho-secao--producao"
+                  >
+                    Dados da Produção
+                  </th>
+                  <th
+                    scope="colgroup"
+                    colspan="3"
+                    class="cabecalho-secao cabecalho-secao--deducoes"
+                  >
+                    Deduções
+                  </th>
+                  <th
+                    scope="colgroup"
+                    colspan="3"
+                    class="cabecalho-secao cabecalho-secao--partilha"
+                  >
+                    Partilha
+                  </th>
+                  <th scope="col" class="cabecalho-secao">
+                    <span class="sr-only">Ações</span>
+                  </th>
+                </tr>
+
+                <!-- Linha 2: colunas individuais -->
+                <tr class="cabecalho-colunas">
+                  <!-- Produção -->
+                  <th scope="col">Convênio / Descrição</th>
+                  <th scope="col">Mês Prod.</th>
+                  <th scope="col">Valor Bruto</th>
+                  <!-- Deduções -->
+                  <th scope="col">Impostos</th>
+                  <th scope="col">
+                    <abbr title="Custos e Pacotes">Custo/Pac.</abbr>
+                  </th>
+                  <th scope="col">
+                    <abbr title="Taxas de Cartão">Taxas Cartão</abbr>
+                  </th>
+                  <!-- Partilha -->
+                  <th scope="col">Valor Líquido</th>
+                  <th scope="col">Rep. Clínica</th>
+                  <th scope="col">Rep. Médico</th>
+                  <!-- Ações -->
+                  <th scope="col">
+                    <span class="sr-only">Ações da linha</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="corpo-tabela-repasse">
+                <!-- Linhas geradas por repasses.js -->
+              </tbody>
+              <tfoot id="rodape-tabela-repasse" class="tabela-repasse__rodape">
+                <!-- Totalizadores gerados por repasses.js -->
+              </tfoot>
+            </table>
+          </div>
+
+          <!-- Botão adicionar avulso -->
+          <div class="area-tabela__acoes">
+            <button type="button" id="btn-novo-avulso" class="btn-secundario">
+              <span aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </span>
+              Adicionar lançamento avulso
             </button>
           </div>
         </section>
@@ -1533,6 +1739,323 @@
       </form>
     </dialog>
 
+    <!-- Modal: Lançamento avulso de repasse -->
+    <dialog
+      id="modal-avulso"
+      class="modal"
+      aria-labelledby="modal-avulso-titulo"
+    >
+      <header class="modal__cabecalho">
+        <h2 id="modal-avulso-titulo" class="modal__titulo">
+          Lançamento Avulso
+        </h2>
+        <button type="button" class="modal__fechar" aria-label="Fechar modal">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </header>
+
+      <form id="form-avulso" class="form-avulso" novalidate>
+        <fieldset class="form-edicao__grupo">
+          <legend class="form-edicao__legenda">Identificação</legend>
+          <div class="form-edicao__grid">
+            <div class="campo-grupo campo-grupo--largo">
+              <label class="campo-grupo__label" for="avulso-descricao"
+                >Descrição</label
+              >
+              <input
+                type="text"
+                id="avulso-descricao"
+                name="descricao"
+                class="campo-grupo__input"
+                placeholder="Ex: Cirurgia Particular - Dinheiro"
+                required
+              />
+            </div>
+
+            <div class="campo-grupo">
+              <label class="campo-grupo__label" for="avulso-categoria"
+                >Categoria</label
+              >
+              <select
+                id="avulso-categoria"
+                name="categoria"
+                class="campo-grupo__input"
+              >
+                <option value="cirurgia_particular">Cirurgia Particular</option>
+                <option value="caixa_consultorio">Caixa Consultório</option>
+                <option value="reembolso">Reembolso</option>
+                <option value="repasse_terceiro">Repasse Terceiro</option>
+                <option value="desconto">Desconto</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+
+            <div class="campo-grupo">
+              <label class="campo-grupo__label" for="avulso-forma-pagamento"
+                >Forma de Pagamento</label
+              >
+              <select
+                id="avulso-forma-pagamento"
+                name="formaPagamento"
+                class="campo-grupo__input"
+              >
+                <option value="dinheiro">Dinheiro</option>
+                <option value="pix">PIX</option>
+                <option value="cartao_credito">Cartão de Crédito</option>
+                <option value="cartao_debito">Cartão de Débito</option>
+                <option value="parcelas">Parcelas</option>
+              </select>
+            </div>
+
+            <!-- Visível apenas quando formaPagamento = parcelas — controlado por repasses.js -->
+            <div class="campo-grupo" id="grupo-obs-parcelas" hidden>
+              <label class="campo-grupo__label" for="avulso-obs-parcelas">
+                Parcelas <span class="campo-grupo__nota">(ex: 2 de 6)</span>
+              </label>
+              <input
+                type="text"
+                id="avulso-obs-parcelas"
+                name="observacaoParcelas"
+                class="campo-grupo__input"
+                placeholder="2 de 6"
+              />
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-edicao__grupo">
+          <legend class="form-edicao__legenda">Valores e Deduções</legend>
+          <div class="form-edicao__grid">
+            <div class="campo-grupo">
+              <label class="campo-grupo__label" for="avulso-valor-bruto"
+                >Valor Bruto (R$)</label
+              >
+              <input
+                type="number"
+                id="avulso-valor-bruto"
+                name="valorBruto"
+                class="campo-grupo__input"
+                step="0.01"
+                min="0"
+              />
+            </div>
+
+            <div class="campo-grupo">
+              <label class="campo-grupo__label" for="avulso-impostos"
+                >Impostos (R$)</label
+              >
+              <input
+                type="number"
+                id="avulso-impostos"
+                name="impostos"
+                class="campo-grupo__input"
+                step="0.01"
+                min="0"
+                value="0"
+              />
+            </div>
+
+            <div class="campo-grupo">
+              <label class="campo-grupo__label" for="avulso-custos-pacotes"
+                >Custos / Pacotes (R$)</label
+              >
+              <input
+                type="number"
+                id="avulso-custos-pacotes"
+                name="custosPacotes"
+                class="campo-grupo__input"
+                step="0.01"
+                min="0"
+                value="0"
+              />
+            </div>
+
+            <div class="campo-grupo">
+              <label class="campo-grupo__label" for="avulso-taxas-cartao"
+                >Taxas Cartão (R$)</label
+              >
+              <input
+                type="number"
+                id="avulso-taxas-cartao"
+                name="taxasCartao"
+                class="campo-grupo__input"
+                step="0.01"
+                min="0"
+                value="0"
+              />
+            </div>
+
+            <div class="campo-grupo">
+              <label class="campo-grupo__label" for="avulso-valor-liquido">
+                Valor Líquido (R$)
+                <span class="campo-grupo__nota">Calculado automaticamente</span>
+              </label>
+              <output
+                id="avulso-valor-liquido"
+                name="valorLiquido"
+                class="campo-grupo__output"
+                for="avulso-valor-bruto avulso-impostos avulso-custos-pacotes avulso-taxas-cartao"
+              >
+                —
+              </output>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-edicao__grupo">
+          <legend class="form-edicao__legenda">Partilha</legend>
+          <div class="form-edicao__grid">
+            <div class="campo-grupo">
+              <label class="campo-grupo__label" for="avulso-perc-clinica"
+                >Rep Clínica</label
+              >
+              <input
+                type="number"
+                id="avulso-perc-clinica"
+                name="percentualClinica"
+                class="campo-grupo__input"
+                step="0.01"
+                min="0"
+                max="100"
+              />
+            </div>
+
+            <div class="campo-grupo">
+              <label class="campo-grupo__label" for="avulso-perc-medico"
+                >Rep Médico</label
+              >
+              <input
+                type="number"
+                id="avulso-perc-medico"
+                name="percentualMedico"
+                class="campo-grupo__input"
+                step="0.01"
+                min="0"
+                max="100"
+              />
+            </div>
+
+            <div class="campo-grupo">
+              <label class="campo-grupo__label" for="avulso-rep-clinica">
+                Repasse Clínica (R$)
+                <span class="campo-grupo__nota">Calculado automaticamente</span>
+              </label>
+              <output
+                id="avulso-rep-clinica"
+                name="repasseClinica"
+                class="campo-grupo__output"
+                for="avulso-valor-liquido avulso-perc-clinica"
+              >
+                —
+              </output>
+            </div>
+
+            <div class="campo-grupo">
+              <label class="campo-grupo__label" for="avulso-rep-medico">
+                Repasse Médico (R$)
+                <span class="campo-grupo__nota">Calculado automaticamente</span>
+              </label>
+              <output
+                id="avulso-rep-medico"
+                name="repasseMedico"
+                class="campo-grupo__output"
+                for="avulso-valor-liquido avulso-perc-medico"
+              >
+                —
+              </output>
+            </div>
+          </div>
+        </fieldset>
+
+        <footer class="modal__acoes">
+          <button type="button" class="btn-secundario modal__fechar">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-primario">Salvar lançamento</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <!-- ============================================================
+       MODAL: Gerenciar Médicos
+       ============================================================ -->
+    <dialog id="modal-gerenciar-medicos" class="modal">
+      <header class="modal__cabecalho">
+        <h2 class="modal__titulo">Gerenciar Médicos</h2>
+        <button type="button" class="modal__fechar" aria-label="Fechar">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </header>
+
+      <div class="form-edicao" style="padding: 1.5rem"></div>
+        <div class="campo-grupo">
+          <label class="campo-grupo__label" for="input-nome-medico"
+            >Novo Médico</label
+          >
+          <div style="display: flex; gap: 8px">
+            <input
+              type="text"
+              id="input-nome-medico"
+              name="nomeMedico"
+              class="campo-grupo__input"
+              placeholder="Digite o nome do médico..."
+            />
+            <button
+              type="button"
+              id="btn-adicionar-medico"
+              class="btn-primario"
+            >
+              Adicionar
+            </button>
+          </div>
+        </div>
+
+        <div class="campo-grupo" style="margin-top: 20px">
+          <label class="campo-grupo__label">Médicos Cadastrados</label>
+          <div
+            id="lista-medicos"
+            style="
+              border: 1px solid var(--borda);
+              border-radius: var(--raio);
+              padding: 12px;
+              max-height: 300px;
+              overflow-y: auto;
+            "
+          >
+            <!-- Lista preenchida por JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal__acoes">
+        <button type="button" class="btn-primario modal__fechar">Fechar</button>
+      </footer>
+    </dialog>
+
     <!-- ============================================================
        NOTIFICAÇÕES TOAST
        Injetadas por ui.js, removidas automaticamente
@@ -1554,6 +2077,7 @@
     <script src="db.js"></script>
     <script src="ui.js"></script>
     <script src="graficos.js"></script>
+    <script src="repasses.js"></script>
     <script src="auth.js"></script>
     <script src="app.js"></script>
 

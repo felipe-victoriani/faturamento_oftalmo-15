@@ -223,6 +223,13 @@
         mostrarView("view-dashboard");
       });
 
+    document
+      .getElementById("btn-nav-repasses")
+      .addEventListener("click", () => {
+        mostrarView("view-repasses");
+        Repasses.inicializar();
+      });
+
     /* ---- Logout ---- */
     document.getElementById("btn-sair").addEventListener("click", async () => {
       try {

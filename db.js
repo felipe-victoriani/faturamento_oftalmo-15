@@ -448,7 +448,179 @@ window.Db = (() => {
   }
 
   /* ============================================================
-     API PÚBLICA
+     REPASSES — Médicos
+     ============================================================ */
+
+  /**
+   * Escuta mudanças na lista de médicos.
+   * @param {Function} callback - Recebe o snapshot como objeto
+   */
+  function ouvirMedicos(callback) {
+    console.log("📡 Configurando listener Firebase em repasses/medicos");
+    firebaseDb.ref("repasses/medicos").on("value", (snap) => {
+      const dados = snap.val() || {};
+      console.log("📥 Firebase retornou dados de médicos:", dados);
+      console.log("📊 Quantidade de médicos:", Object.keys(dados).length);
+      callback(dados);
+    });
+  }
+
+  /**
+   * Adiciona um novo médico.
+   * @param {string} nome
+   * @returns {Promise<void>}
+   */
+  function adicionarMedico(nome) {
+    console.log("➕ DB: Adicionando médico:", nome);
+    const novoRef = firebaseDb.ref("repasses/medicos").push();
+    console.log("🔑 ID gerado:", novoRef.key);
+    return novoRef
+      .set({ nome, criadoEm: Date.now() })
+      .then(() => {
+        console.log("✅ DB: Médico salvo com sucesso:", nome);
+      })
+      .catch((erro) => {
+        console.error("❌ DB: Erro ao salvar médico:", erro);
+        throw erro;
+      });
+  }
+
+  /**
+   * Renomeia um médico existente.
+   * @param {string} medicoId
+   * @param {string} novoNome
+   * @returns {Promise<void>}
+   */
+  function renomearMedico(medicoId, novoNome) {
+    return firebaseDb
+      .ref(`repasses/medicos/${medicoId}`)
+      .update({ nome: novoNome });
+  }
+
+  /**
+   * Exclui um médico e todos os seus lançamentos de repasse.
+   * @param {string} medicoId
+   * @returns {Promise<void>}
+   */
+  function excluirMedico(medicoId) {
+    return Promise.all([
+      firebaseDb.ref(`repasses/medicos/${medicoId}`).remove(),
+      firebaseDb.ref(`repasses/lancamentos/${medicoId}`).remove(),
+    ]);
+  }
+
+  /* ============================================================
+     REPASSES — Lançamentos
+     ============================================================ */
+
+  /**
+   * Escuta os dados de repasse de um médico em um mês específico.
+   * @param {string}   medicoId
+   * @param {string}   mesAno   - Formato "YYYY-MM"
+   * @param {Function} callback - Recebe o snapshot como objeto
+   */
+  function ouvirRepasse(medicoId, mesAno, callback) {
+    firebaseDb
+      .ref(`repasses/lancamentos/${medicoId}/${mesAno}`)
+      .on("value", (snap) => callback(snap.val() || {}));
+  }
+
+  /**
+   * Para de escutar o repasse de um médico/mês (chamar ao trocar de médico ou mês).
+   * @param {string} medicoId
+   * @param {string} mesAno
+   */
+  function pararOuvirRepasse(medicoId, mesAno) {
+    firebaseDb.ref(`repasses/lancamentos/${medicoId}/${mesAno}`).off();
+  }
+
+  /**
+   * Salva (ou atualiza) os dados de um convênio dentro do repasse.
+   * Usado para edição inline das colunas de deduções e partilha.
+   *
+   * @param {string} medicoId
+   * @param {string} mesAno
+   * @param {string} convenioId
+   * @param {Object} dados - Campos a atualizar (merge parcial)
+   * @returns {Promise<void>}
+   */
+  function salvarConvenioRepasse(medicoId, mesAno, convenioId, dados) {
+    console.log(
+      `[Db] salvarConvenioRepasse - Path: repasses/lancamentos/${medicoId}/${mesAno}/convenios/${convenioId}`,
+    );
+    console.log(`[Db] Dados a salvar:`, dados);
+
+    return firebaseDb
+      .ref(`repasses/lancamentos/${medicoId}/${mesAno}/convenios/${convenioId}`)
+      .update({ ...dados, updatedAt: Date.now() })
+      .then(() => {
+        console.log(`[Db] Dados salvos com sucesso!`);
+      })
+      .catch((erro) => {
+        console.error(`[Db] Erro ao salvar:`, erro);
+      });
+  }
+
+  /**
+   * Adiciona um novo lançamento avulso ao repasse.
+   * @param {string} medicoId
+   * @param {string} mesAno
+   * @param {Object} dados
+   * @returns {Promise<void>}
+   */
+  function adicionarAvulsoRepasse(medicoId, mesAno, dados) {
+    const novoRef = firebaseDb
+      .ref(`repasses/lancamentos/${medicoId}/${mesAno}/avulsos`)
+      .push();
+    return novoRef.set({
+      ...dados,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  }
+
+  /**
+   * Atualiza um lançamento avulso existente.
+   * @param {string} medicoId
+   * @param {string} mesAno
+   * @param {string} avulsoId
+   * @param {Object} dados
+   * @returns {Promise<void>}
+   */
+  function atualizarAvulsoRepasse(medicoId, mesAno, avulsoId, dados) {
+    return firebaseDb
+      .ref(`repasses/lancamentos/${medicoId}/${mesAno}/avulsos/${avulsoId}`)
+      .update({ ...dados, updatedAt: Date.now() });
+  }
+
+  /**
+   * Exclui um lançamento avulso.
+   * @param {string} medicoId
+   * @param {string} mesAno
+   * @param {string} avulsoId
+   * @returns {Promise<void>}
+   */
+  function excluirAvulsoRepasse(medicoId, mesAno, avulsoId) {
+    return firebaseDb
+      .ref(`repasses/lancamentos/${medicoId}/${mesAno}/avulsos/${avulsoId}`)
+      .remove();
+  }
+
+  /**
+   * Salva o valor de reembolso clínica do mês.
+   * @param {string} medicoId
+   * @param {string} mesAno
+   * @param {number} valor
+   * @returns {Promise<void>}
+   */
+  function salvarReembolsoClinica(medicoId, mesAno, valor) {
+    return firebaseDb
+      .ref(`repasses/lancamentos/${medicoId}/${mesAno}`)
+      .update({ reembolsoClinica: valor, updatedAt: Date.now() });
+  }
+
+  /* ============================================================
+     EXPORTAÇÃO DO MÓDULO
      ============================================================ */
 
   return {
@@ -465,5 +637,17 @@ window.Db = (() => {
     recalcularTodosImpostos,
     exportarJSON,
     registrarAuditoria,
+    // Repasses
+    ouvirMedicos,
+    adicionarMedico,
+    renomearMedico,
+    excluirMedico,
+    ouvirRepasse,
+    pararOuvirRepasse,
+    salvarConvenioRepasse,
+    adicionarAvulsoRepasse,
+    atualizarAvulsoRepasse,
+    excluirAvulsoRepasse,
+    salvarReembolsoClinica,
   };
 })();

@@ -77,6 +77,26 @@
       "$other": {
         ".validate": false
       }
+    },
+    "repasses": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "medicos": {
+        "$medicoId": {
+          "nome": {
+            ".validate": "newData.isString() && newData.val().length > 0"
+          },
+          "criadoEm": {
+            ".validate": "newData.isNumber() || !newData.exists()"
+          }
+        }
+      },
+      "lancamentos": {
+        "$medicoId": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
     }
   }
 }

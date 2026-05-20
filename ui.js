@@ -63,6 +63,8 @@ window.Ui = (() => {
     atencao: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
 
     dinheiro: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M18.5 9.5v5M5.5 9.5v5"/></svg>`,
+
+    pessoas: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
   };
 
   /* ============================================================
@@ -316,6 +318,69 @@ window.Ui = (() => {
         descricao: "Aguardando recebimento",
         icone: Icones.atencao,
         classe: "card-resumo--pendente",
+      },
+    ];
+
+    container.innerHTML = cards
+      .map(
+        (card) => `
+      <article class="card-resumo ${card.classe}">
+        <header class="card-resumo__cabecalho">
+          <h3 class="card-resumo__titulo">${card.titulo}</h3>
+          <div class="card-resumo__icone">
+            ${card.icone}
+          </div>
+        </header>
+        <p class="card-resumo__valor">${card.valor}</p>
+        <p class="card-resumo__descricao">${card.descricao}</p>
+      </article>
+    `,
+      )
+      .join("");
+  }
+
+  /**
+   * Renderiza os 4 cards de resumo da view de Repasses.
+   * Chamada por repasses.js após calcular os totais.
+   *
+   * @param {Object} totais
+   * @param {number} totais.totalProducao    - Soma de todos os valorBruto
+   * @param {number} totais.totalRecebido    - Soma dos repasseMedico já recebidos
+   * @param {number} totais.reembolsoClinica - Valor manual do campo de reembolso
+   * @param {number} totais.liquidoReceber   - totalProducao - totalRecebido - reembolsoClinica
+   */
+  function renderizarCardsRepasse(totais) {
+    const container = document.querySelector(".repasses-cards");
+    if (!container) return;
+
+    const cards = [
+      {
+        titulo: "Total Produção",
+        valor: formatarBRL(totais.totalProducao || 0),
+        descricao: "Soma de todos os valores brutos",
+        icone: Icones.graficoBarra,
+        classe: "card-resumo--producao",
+      },
+      {
+        titulo: "Total Recebido",
+        valor: formatarBRL(totais.totalRecebido || 0),
+        descricao: "Repasse médico total",
+        icone: Icones.check,
+        classe: "card-resumo--financeiro",
+      },
+      {
+        titulo: "Reembolso Clínica",
+        valor: formatarBRL(totais.reembolsoClinica || 0),
+        descricao: "Valor a descontar",
+        icone: Icones.atencao,
+        classe: "",
+      },
+      {
+        titulo: "Líquido a Receber",
+        valor: formatarBRL(totais.liquidoReceber || 0),
+        descricao: "Produção - Recebido - Reembolso",
+        icone: Icones.dinheiro,
+        classe: "card-resumo--faturamento",
       },
     ];
 
@@ -943,6 +1008,7 @@ window.Ui = (() => {
   return {
     renderizarAbas,
     renderizarCards,
+    renderizarCardsRepasse,
     renderizarTabela,
     renderizarTotalizadores,
     abrirModalEdicao,
