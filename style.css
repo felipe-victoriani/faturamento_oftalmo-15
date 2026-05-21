@@ -1986,6 +1986,39 @@ dialog::backdrop {
   padding: 16px 24px;
 }
 
+/* Rodapé com regras de repasse */
+.repasses-rodape {
+  padding: 16px 24px;
+  margin-top: 24px;
+  border-top: 1px solid var(--borda);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.01), transparent);
+}
+
+.repasses-rodape__texto {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--texto-secundario);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.5;
+}
+
+.repasses-rodape__icone {
+  font-size: 1rem;
+  opacity: 0.8;
+}
+
+.repasses-rodape__regra {
+  font-weight: 500;
+  color: var(--texto-principal);
+}
+
+.repasses-rodape__separador {
+  opacity: 0.5;
+  font-weight: 300;
+}
+
 /* Cabeçalho de grupo: Deduções */
 .cabecalho-secao--deducoes {
   background: var(--secao-deducoes-bg);
@@ -2356,6 +2389,12 @@ dialog::backdrop {
 
   .repasses-cards {
     grid-template-columns: 1fr;
+  }
+
+  .repasses-rodape__texto {
+    font-size: 0.75rem;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   .form-avulso .form-edicao__grid {

@@ -384,8 +384,8 @@ window.Repasses = (() => {
         impostos: 0,
         custosPacotes: 0,
         taxasCartao: 0,
-        percentualClinica: 50,
-        percentualMedico: 50,
+        percentualClinica: 60,
+        percentualMedico: 40,
       });
     });
   }
@@ -463,8 +463,8 @@ window.Repasses = (() => {
         taxasCartao,
       );
 
-      const percClinica = dadosConvenio.percentualClinica || 50;
-      const percMedico = dadosConvenio.percentualMedico || 50;
+      const percClinica = dadosConvenio.percentualClinica || 60;
+      const percMedico = dadosConvenio.percentualMedico || 40;
       const partilha = calcularPartilha(valorLiquido, percClinica, percMedico);
 
       tr.innerHTML = `
@@ -743,8 +743,8 @@ window.Repasses = (() => {
 
     const partilha = calcularPartilha(
       valorLiquido,
-      dadosConvenio.percentualClinica || 50,
-      dadosConvenio.percentualMedico || 50,
+      dadosConvenio.percentualClinica || 60,
+      dadosConvenio.percentualMedico || 40,
     );
 
     console.log(
@@ -1205,6 +1205,80 @@ window.Repasses = (() => {
   }
 
   /* ============================================================
+     MIGRAÇÃO DE DADOS
+     ============================================================ */
+
+  /**
+   * Migra todos os convênios existentes para usar 60/40 (clínica/médico).
+   * Função temporária para atualizar dados já cadastrados.
+   */
+  async function migrarPercentuaisParaSessentaQuarenta() {
+    console.log("🔄 Iniciando migração de percentuais para 60/40...");
+
+    try {
+      const snapshot = await firebaseDb
+        .ref("repasses/lancamentos")
+        .once("value");
+      const lancamentos = snapshot.val();
+
+      if (!lancamentos) {
+        console.log("⚠️ Nenhum lançamento encontrado");
+        Ui.mostrarToast("Nenhum repasse encontrado para migrar", "aviso");
+        return;
+      }
+
+      let contador = 0;
+      const updates = {};
+
+      // Percorre todos os médicos
+      for (const [medicoId, mesesData] of Object.entries(lancamentos)) {
+        // Percorre todos os meses do médico
+        for (const [mesAno, mesData] of Object.entries(mesesData)) {
+          // Percorre todos os convênios do mês
+          if (mesData.convenios) {
+            for (const [convenioId, convenioData] of Object.entries(
+              mesData.convenios,
+            )) {
+              // Atualiza os percentuais
+              updates[
+                `repasses/lancamentos/${medicoId}/${mesAno}/convenios/${convenioId}/percentualClinica`
+              ] = 60;
+              updates[
+                `repasses/lancamentos/${medicoId}/${mesAno}/convenios/${convenioId}/percentualMedico`
+              ] = 40;
+              contador++;
+
+              console.log(
+                `✏️ Atualizando: ${convenioData.nomeConvenio || convenioId} - ${mesAno}`,
+              );
+            }
+          }
+        }
+      }
+
+      if (contador === 0) {
+        console.log("⚠️ Nenhum convênio encontrado para atualizar");
+        Ui.mostrarToast("Nenhum convênio encontrado para migrar", "aviso");
+        return;
+      }
+
+      // Aplica todas as atualizações de uma vez
+      await firebaseDb.ref().update(updates);
+
+      console.log(
+        `✅ Migração concluída! ${contador} convênios atualizados para 60/40`,
+      );
+      Ui.mostrarToast(
+        `${contador} convênios atualizados para 60% clínica / 40% médico`,
+        "sucesso",
+      );
+    } catch (erro) {
+      console.error("❌ Erro na migração:", erro);
+      Ui.mostrarToast("Erro ao migrar percentuais: " + erro.message, "erro");
+    }
+  }
+
+  /* ============================================================
      EXPORTAÇÃO DO MÓDULO
      ============================================================ */
 
@@ -1214,5 +1288,70 @@ window.Repasses = (() => {
     sincronizarValoresConvenio,
     aoClicarCarregar,
     aoAlterarReembolso,
+    migrarPercentuaisParaSessentaQuarenta,
   };
 })();
+
+/* ============================================================
+   UTILITÁRIO DE MIGRAÇÃO (GLOBAL)
+   ============================================================ */
+window.migrarRepasses6040 = async function () {
+  console.log("🔄 Iniciando migração de percentuais para 60/40...");
+
+  try {
+    const snapshot = await firebaseDb.ref("repasses/lancamentos").once("value");
+    const lancamentos = snapshot.val();
+
+    if (!lancamentos) {
+      console.log("⚠️ Nenhum lançamento encontrado");
+      alert("Nenhum repasse encontrado para migrar");
+      return;
+    }
+
+    let contador = 0;
+    const updates = {};
+
+    // Percorre todos os médicos
+    for (const [medicoId, mesesData] of Object.entries(lancamentos)) {
+      // Percorre todos os meses do médico
+      for (const [mesAno, mesData] of Object.entries(mesesData)) {
+        // Percorre todos os convênios do mês
+        if (mesData.convenios) {
+          for (const [convenioId, convenioData] of Object.entries(
+            mesData.convenios,
+          )) {
+            // Atualiza os percentuais
+            updates[
+              `repasses/lancamentos/${medicoId}/${mesAno}/convenios/${convenioId}/percentualClinica`
+            ] = 60;
+            updates[
+              `repasses/lancamentos/${medicoId}/${mesAno}/convenios/${convenioId}/percentualMedico`
+            ] = 40;
+            contador++;
+
+            console.log(
+              `✏️ Atualizando: ${convenioData.nomeConvenio || convenioId} - ${mesAno}`,
+            );
+          }
+        }
+      }
+    }
+
+    if (contador === 0) {
+      console.log("⚠️ Nenhum convênio encontrado para atualizar");
+      alert("Nenhum convênio encontrado para migrar");
+      return;
+    }
+
+    // Aplica todas as atualizações de uma vez
+    await firebaseDb.ref().update(updates);
+
+    console.log(
+      `✅ Migração concluída! ${contador} convênios atualizados para 60/40`,
+    );
+    alert(`✅ ${contador} convênios atualizados para 60% clínica / 40% médico`);
+  } catch (erro) {
+    console.error("❌ Erro na migração:", erro);
+    alert("❌ Erro ao migrar percentuais: " + erro.message);
+  }
+};
