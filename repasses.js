@@ -102,23 +102,6 @@ window.Repasses = (() => {
       .getElementById("form-avulso")
       .addEventListener("submit", aoSubmeterAvulso);
 
-    // Campos do form de avulso para cálculo em tempo real
-    const camposCalculo = [
-      "avulso-valor-bruto",
-      "avulso-impostos",
-      "avulso-custos-pacotes",
-      "avulso-taxas-cartao",
-      "avulso-perc-clinica",
-      "avulso-perc-medico",
-    ];
-
-    camposCalculo.forEach((id) => {
-      const campo = document.getElementById(id);
-      if (campo) {
-        campo.addEventListener("input", calcularValoresModalAvulso);
-      }
-    });
-
     // Mostrar/ocultar campo de observação de parcelas
     document
       .getElementById("avulso-forma-pagamento")
@@ -727,6 +710,7 @@ window.Repasses = (() => {
 
     let totalProducao = 0;
     let totalRecebido = 0;
+    let reembolsoAvulsos = 0;
 
     linhas.forEach((linha, indexLinha) => {
       const celulas = linha.querySelectorAll("td");
@@ -737,6 +721,54 @@ window.Repasses = (() => {
       if (celulas.length < 9) {
         console.log(`  ⚠️ Linha ${indexLinha} ignorada - menos de 9 células`);
         return;
+      }
+
+      // Verifica se é linha avulsa com categoria reembolso
+      const tipo = linha.dataset.tipo;
+      const avulsoId = linha.dataset.avulsoId;
+
+      console.log(
+        `  🔍 Linha ${indexLinha}: tipo="${tipo}", avulsoId="${avulsoId}"`,
+      );
+
+      if (tipo === "avulso" && avulsoId) {
+        console.log(`  📦 dadosAtivos.avulsos existe:`, !!dadosAtivos.avulsos);
+        console.log(
+          `  📦 dadosAtivos.avulsos[${avulsoId}] existe:`,
+          !!dadosAtivos.avulsos?.[avulsoId],
+        );
+
+        if (dadosAtivos.avulsos?.[avulsoId]) {
+          const dadosAvulso = dadosAtivos.avulsos[avulsoId];
+          console.log(`  📋 Categoria do avulso: "${dadosAvulso.categoria}"`);
+          console.log(`  💰 Dados completos do avulso:`, dadosAvulso);
+
+          if (dadosAvulso.categoria === "reembolso") {
+            // Para reembolsos, soma AMBOS os campos (clínica + médico)
+            // pois o valor pode estar em qualquer um dependendo de como foi preenchido
+            const valorReembolsoClinica = dadosAvulso.repasseClinica || 0;
+            const valorReembolsoMedico = dadosAvulso.repasseMedico || 0;
+            const valorReembolsoTotal =
+              valorReembolsoClinica + valorReembolsoMedico;
+
+            reembolsoAvulsos += valorReembolsoTotal;
+            console.log(`  💸 ✅ REEMBOLSO DETECTADO! Linha ${indexLinha}:`);
+            console.log(`      - Repasse Clínica: R$ ${valorReembolsoClinica}`);
+            console.log(`      - Repasse Médico: R$ ${valorReembolsoMedico}`);
+            console.log(
+              `      - Total do Reembolso: R$ ${valorReembolsoTotal}`,
+            );
+            console.log(
+              `  💸 Total reembolsos avulsos acumulado: R$ ${reembolsoAvulsos}`,
+            );
+            // Não soma produção/recebido para reembolsos
+            return;
+          } else {
+            console.log(
+              `  ℹ️ Linha ${indexLinha}: Avulso categoria "${dadosAvulso.categoria}" (não é reembolso)`,
+            );
+          }
+        }
       }
 
       // Pegar valores dos spans .celula-valor
@@ -759,12 +791,16 @@ window.Repasses = (() => {
       totalRecebido += repasseMedico;
     });
 
-    const liquidoReceber = totalProducao - totalRecebido - reembolsoClinica;
+    // Soma reembolso manual + reembolsos de avulsos
+    const reembolsoTotal = reembolsoClinica + reembolsoAvulsos;
+    const liquidoReceber = totalProducao - totalRecebido - reembolsoTotal;
 
     console.log("✅ calcularEAtualizarCards - Totais calculados:", {
       totalProducao,
       totalRecebido,
-      reembolsoClinica,
+      reembolsoClinica: reembolsoClinica,
+      reembolsoAvulsos: reembolsoAvulsos,
+      reembolsoTotal: reembolsoTotal,
       liquidoReceber,
     });
 
@@ -774,7 +810,7 @@ window.Repasses = (() => {
     Ui.renderizarCardsRepasse({
       totalProducao,
       totalRecebido,
-      reembolsoClinica,
+      reembolsoClinica: reembolsoTotal,
       liquidoReceber,
     });
   }
@@ -1018,17 +1054,20 @@ window.Repasses = (() => {
       dados.custosPacotes || 0;
     document.getElementById("avulso-taxas-cartao").value =
       dados.taxasCartao || 0;
+    document.getElementById("avulso-valor-liquido").value =
+      dados.valorLiquidoFinal || 0;
     document.getElementById("avulso-perc-clinica").value =
       dados.percentualClinica || 50;
     document.getElementById("avulso-perc-medico").value =
       dados.percentualMedico || 50;
+    document.getElementById("avulso-rep-clinica").value =
+      dados.repasseClinica || 0;
+    document.getElementById("avulso-rep-medico").value =
+      dados.repasseMedico || 0;
 
     // Mostra campo de parcelas se necessário
     document.getElementById("grupo-obs-parcelas").hidden =
       dados.formaPagamento !== "parcelas";
-
-    // Calcula valores
-    calcularValoresModalAvulso();
 
     modal.showModal();
   }
@@ -1051,46 +1090,11 @@ window.Repasses = (() => {
     console.log("✅ Modal avulso fechado");
   }
 
-  /**
-   * Calcula valores no modal de avulso em tempo real.
-   */
-  function calcularValoresModalAvulso() {
-    const valorBruto =
-      parseFloat(document.getElementById("avulso-valor-bruto").value) || 0;
-    const impostos =
-      parseFloat(document.getElementById("avulso-impostos").value) || 0;
-    const custosPacotes =
-      parseFloat(document.getElementById("avulso-custos-pacotes").value) || 0;
-    const taxasCartao =
-      parseFloat(document.getElementById("avulso-taxas-cartao").value) || 0;
-    const percClinica =
-      parseFloat(document.getElementById("avulso-perc-clinica").value) || 0;
-    const percMedico =
-      parseFloat(document.getElementById("avulso-perc-medico").value) || 0;
-
-    // Calcula líquido
-    const valorLiquido = calcularLiquidoRepasse(
-      valorBruto,
-      impostos,
-      custosPacotes,
-      taxasCartao,
-    );
-    document.getElementById("avulso-valor-liquido").textContent =
-      Ui.formatarBRL(valorLiquido);
-
-    // Calcula partilha
-    const partilha = calcularPartilha(valorLiquido, percClinica, percMedico);
-    document.getElementById("avulso-rep-clinica").textContent = Ui.formatarBRL(
-      partilha.repasseClinica,
-    );
-    document.getElementById("avulso-rep-medico").textContent = Ui.formatarBRL(
-      partilha.repasseMedico,
-    );
-  }
+  // Função calcularValoresModalAvulso removida - formulário agora é 100% manual
 
   /**
    * Processa o submit do formulário de avulso.
-   * Calcula liquidoFinal e partilha antes de salvar.
+   * Salva os valores exatamente como o usuário digitou (sem cálculos).
    * @param {SubmitEvent} evento
    */
   function aoSubmeterAvulso(evento) {
@@ -1100,7 +1104,7 @@ window.Repasses = (() => {
     const modo = form.dataset.modo;
     const avulsoId = form.dataset.avulsoId;
 
-    // Coleta dados do formulário
+    // Coleta dados do formulário - todos os valores vêm direto dos inputs
     const valorBruto =
       parseFloat(document.getElementById("avulso-valor-bruto").value) || 0;
     const impostos =
@@ -1109,18 +1113,16 @@ window.Repasses = (() => {
       parseFloat(document.getElementById("avulso-custos-pacotes").value) || 0;
     const taxasCartao =
       parseFloat(document.getElementById("avulso-taxas-cartao").value) || 0;
+    const valorLiquido =
+      parseFloat(document.getElementById("avulso-valor-liquido").value) || 0;
     const percClinica =
       parseFloat(document.getElementById("avulso-perc-clinica").value) || 0;
     const percMedico =
       parseFloat(document.getElementById("avulso-perc-medico").value) || 0;
-
-    const valorLiquido = calcularLiquidoRepasse(
-      valorBruto,
-      impostos,
-      custosPacotes,
-      taxasCartao,
-    );
-    const partilha = calcularPartilha(valorLiquido, percClinica, percMedico);
+    const repasseClinica =
+      parseFloat(document.getElementById("avulso-rep-clinica").value) || 0;
+    const repasseMedico =
+      parseFloat(document.getElementById("avulso-rep-medico").value) || 0;
 
     const dados = {
       descricao: document.getElementById("avulso-descricao").value.trim(),
@@ -1136,8 +1138,8 @@ window.Repasses = (() => {
       valorLiquidoFinal: valorLiquido,
       percentualClinica: percClinica,
       percentualMedico: percMedico,
-      repasseClinica: partilha.repasseClinica,
-      repasseMedico: partilha.repasseMedico,
+      repasseClinica: repasseClinica,
+      repasseMedico: repasseMedico,
     };
 
     if (modo === "criar") {

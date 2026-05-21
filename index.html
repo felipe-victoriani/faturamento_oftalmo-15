@@ -1913,16 +1913,16 @@
             <div class="campo-grupo">
               <label class="campo-grupo__label" for="avulso-valor-liquido">
                 Valor Líquido (R$)
-                <span class="campo-grupo__nota">Calculado automaticamente</span>
               </label>
-              <output
+              <input
+                type="number"
                 id="avulso-valor-liquido"
                 name="valorLiquido"
-                class="campo-grupo__output"
-                for="avulso-valor-bruto avulso-impostos avulso-custos-pacotes avulso-taxas-cartao"
-              >
-                —
-              </output>
+                class="campo-grupo__input"
+                step="0.01"
+                min="0"
+                value="0"
+              />
             </div>
           </div>
         </fieldset>
@@ -1965,31 +1965,31 @@
             <div class="campo-grupo">
               <label class="campo-grupo__label" for="avulso-rep-clinica">
                 Repasse Clínica (R$)
-                <span class="campo-grupo__nota">Calculado automaticamente</span>
               </label>
-              <output
+              <input
+                type="number"
                 id="avulso-rep-clinica"
                 name="repasseClinica"
-                class="campo-grupo__output"
-                for="avulso-valor-liquido avulso-perc-clinica"
-              >
-                —
-              </output>
+                class="campo-grupo__input"
+                step="0.01"
+                min="0"
+                value="0"
+              />
             </div>
 
             <div class="campo-grupo">
               <label class="campo-grupo__label" for="avulso-rep-medico">
                 Repasse Médico (R$)
-                <span class="campo-grupo__nota">Calculado automaticamente</span>
               </label>
-              <output
+              <input
+                type="number"
                 id="avulso-rep-medico"
                 name="repasseMedico"
-                class="campo-grupo__output"
-                for="avulso-valor-liquido avulso-perc-medico"
-              >
-                —
-              </output>
+                class="campo-grupo__input"
+                step="0.01"
+                min="0"
+                value="0"
+              />
             </div>
           </div>
         </fieldset>
