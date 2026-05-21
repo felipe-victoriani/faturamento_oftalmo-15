@@ -868,12 +868,12 @@
                   <th scope="col">Mês Prod.</th>
                   <th scope="col">Valor Bruto</th>
                   <!-- Deduções -->
-                  <th scope="col">Impostos</th>
+                  <th scope="col">Impostos (%)</th>
                   <th scope="col">
                     <abbr title="Custos e Pacotes">Custo/Pac.</abbr>
                   </th>
                   <th scope="col">
-                    <abbr title="Taxas de Cartão">Taxas Cartão</abbr>
+                    <abbr title="Taxas de Cartão">Taxas Cartão (%)</abbr>
                   </th>
                   <!-- Partilha -->
                   <th scope="col">Valor Líquido</th>
@@ -922,9 +922,9 @@
           <p class="repasses-rodape__texto">
             <span class="repasses-rodape__icone" aria-hidden="true">ℹ️</span>
             <strong>Regras de repasse:</strong>
-            <span class="repasses-rodape__regra">Clínica 60%</span>
+            <span class="repasses-rodape__regra">Clínica 40%</span>
             <span class="repasses-rodape__separador">•</span>
-            <span class="repasses-rodape__regra">Médico 40%</span>
+            <span class="repasses-rodape__regra">Médico 60%</span>
           </p>
         </footer>
       </div>
@@ -1865,7 +1865,7 @@
 
             <div class="campo-grupo">
               <label class="campo-grupo__label" for="avulso-impostos"
-                >Impostos (R$)</label
+                >Impostos (%)</label
               >
               <input
                 type="number"
@@ -1874,6 +1874,7 @@
                 class="campo-grupo__input"
                 step="0.01"
                 min="0"
+                max="100"
                 value="0"
               />
             </div>
@@ -1895,7 +1896,7 @@
 
             <div class="campo-grupo">
               <label class="campo-grupo__label" for="avulso-taxas-cartao"
-                >Taxas Cartão (R$)</label
+                >Taxas Cartão (%)</label
               >
               <input
                 type="number"
@@ -1904,6 +1905,7 @@
                 class="campo-grupo__input"
                 step="0.01"
                 min="0"
+                max="100"
                 value="0"
               />
             </div>
@@ -1940,6 +1942,7 @@
                 step="0.01"
                 min="0"
                 max="100"
+                value="40"
               />
             </div>
 
@@ -1955,6 +1958,7 @@
                 step="0.01"
                 min="0"
                 max="100"
+                value="60"
               />
             </div>
 

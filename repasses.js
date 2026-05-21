@@ -384,8 +384,8 @@ window.Repasses = (() => {
         impostos: 0,
         custosPacotes: 0,
         taxasCartao: 0,
-        percentualClinica: 60,
-        percentualMedico: 40,
+        percentualClinica: 40,
+        percentualMedico: 60,
       });
     });
   }
@@ -463,17 +463,17 @@ window.Repasses = (() => {
         taxasCartao,
       );
 
-      const percClinica = dadosConvenio.percentualClinica || 60;
-      const percMedico = dadosConvenio.percentualMedico || 40;
+      const percClinica = dadosConvenio.percentualClinica || 40;
+      const percMedico = dadosConvenio.percentualMedico || 60;
       const partilha = calcularPartilha(valorLiquido, percClinica, percMedico);
 
       tr.innerHTML = `
         <td><span class="celula-label">Convênio</span><span class="celula-valor">${convenio.nome}</span></td>
         <td><span class="celula-label">Mês Prod.</span><span class="celula-valor">${mesAnoAtivo}</span></td>
         <td><span class="celula-label">Valor Bruto</span><span class="celula-editavel celula-valor" data-campo="valorBruto" contenteditable="${editavel}">${Ui.formatarBRL(valorBruto)}</span></td>
-        <td><span class="celula-label">Impostos</span><span class="celula-editavel celula-valor" data-campo="impostos" contenteditable="${editavel}">${Ui.formatarBRL(impostos)}</span></td>
+        <td><span class="celula-label">Impostos</span><span class="celula-editavel celula-valor" data-campo="impostos" data-tipo="percentual" contenteditable="${editavel}">${impostos.toFixed(2)}%</span></td>
         <td><span class="celula-label">Custos/Pacotes</span><span class="celula-editavel celula-valor" data-campo="custosPacotes" contenteditable="${editavel}">${Ui.formatarBRL(custosPacotes)}</span></td>
-        <td><span class="celula-label">Taxas Cartão</span><span class="celula-editavel celula-valor" data-campo="taxasCartao" contenteditable="${editavel}">${Ui.formatarBRL(taxasCartao)}</span></td>
+        <td><span class="celula-label">Taxas Cartão</span><span class="celula-editavel celula-valor" data-campo="taxasCartao" data-tipo="percentual" contenteditable="${editavel}">${taxasCartao.toFixed(2)}%</span></td>
         <td><span class="celula-label">Valor Líquido</span><span class="celula-calculada celula-valor">${Ui.formatarBRL(valorLiquido)}</span></td>
         <td><span class="celula-label">Rep. Clínica</span><span class="celula-calculada celula-valor">${Ui.formatarBRL(partilha.repasseClinica)}</span></td>
         <td><span class="celula-label">Rep. Médico</span><span class="celula-calculada celula-valor">${Ui.formatarBRL(partilha.repasseMedico)}</span></td>
@@ -553,9 +553,9 @@ window.Repasses = (() => {
         <td><span class="celula-label">Descrição</span><span class="celula-valor">${descricaoCompleta}${observacao ? ` (${observacao})` : ""}</span></td>
         <td><span class="celula-label">Mês Prod.</span><span class="celula-valor">${mesAnoAtivo}</span></td>
         <td><span class="celula-label">Valor Bruto</span><span class="celula-valor">${Ui.formatarBRL(valorBruto)}</span></td>
-        <td><span class="celula-label">Impostos</span><span class="celula-valor">${Ui.formatarBRL(impostos)}</span></td>
+        <td><span class="celula-label">Impostos</span><span class="celula-valor">${impostos.toFixed(2)}%</span></td>
         <td><span class="celula-label">Custos/Pacotes</span><span class="celula-valor">${Ui.formatarBRL(custosPacotes)}</span></td>
-        <td><span class="celula-label">Taxas Cartão</span><span class="celula-valor">${Ui.formatarBRL(taxasCartao)}</span></td>
+        <td><span class="celula-label">Taxas Cartão</span><span class="celula-valor">${taxasCartao.toFixed(2)}%</span></td>
         <td><span class="celula-label">Valor Líquido</span><span class="celula-calculada celula-valor">${Ui.formatarBRL(valorLiquido)}</span></td>
         <td><span class="celula-label">Rep. Clínica</span><span class="celula-calculada celula-valor">${Ui.formatarBRL(repasseClinica)}</span></td>
         <td><span class="celula-label">Rep. Médico</span><span class="celula-calculada celula-valor">${Ui.formatarBRL(repasseMedico)}</span></td>
@@ -618,9 +618,9 @@ window.Repasses = (() => {
       <tr class="totalizadores">
         <th scope="row" colspan="2">TOTAIS</th>
         <td class="totalizador-valor"><span class="celula-label">Valor Bruto</span><span class="celula-valor">${Ui.formatarBRL(totais.valorBruto)}</span></td>
-        <td class="totalizador-valor"><span class="celula-label">Impostos</span><span class="celula-valor">${Ui.formatarBRL(totais.impostos)}</span></td>
+        <td class="totalizador-valor"><span class="celula-label">Impostos</span><span class="celula-valor">—</span></td>
         <td class="totalizador-valor"><span class="celula-label">Custos/Pacotes</span><span class="celula-valor">${Ui.formatarBRL(totais.custosPacotes)}</span></td>
-        <td class="totalizador-valor"><span class="celula-label">Taxas Cartão</span><span class="celula-valor">${Ui.formatarBRL(totais.taxasCartao)}</span></td>
+        <td class="totalizador-valor"><span class="celula-label">Taxas Cartão</span><span class="celula-valor">—</span></td>
         <td class="totalizador-valor"><span class="celula-label">Valor Líquido</span><span class="celula-valor">${Ui.formatarBRL(totais.valorLiquido)}</span></td>
         <td class="totalizador-valor"><span class="celula-label">Rep. Clínica</span><span class="celula-valor">${Ui.formatarBRL(totais.repasseClinica)}</span></td>
         <td class="totalizador-valor"><span class="celula-label">Rep. Médico</span><span class="celula-valor">${Ui.formatarBRL(totais.repasseMedico)}</span></td>
@@ -780,24 +780,30 @@ window.Repasses = (() => {
 
   /**
    * Calcula o valor líquido de um lançamento de repasse.
+   * Impostos e taxas de cartão são porcentagens (0-100) aplicadas sobre o valor bruto.
    *
    * @param {number} valorBruto
-   * @param {number} impostos
-   * @param {number} custosPacotes
-   * @param {number} taxasCartao
+   * @param {number} percentualImpostos - Porcentagem (0-100)
+   * @param {number} custosPacotes - Valor em reais
+   * @param {number} percentualTaxasCartao - Porcentagem (0-100)
    * @returns {number}
    */
   function calcularLiquidoRepasse(
     valorBruto,
-    impostos,
+    percentualImpostos,
     custosPacotes,
-    taxasCartao,
+    percentualTaxasCartao,
   ) {
     const bruto = parseFloat(valorBruto) || 0;
-    const imp = parseFloat(impostos) || 0;
+    const percImp = parseFloat(percentualImpostos) || 0;
     const custos = parseFloat(custosPacotes) || 0;
-    const taxas = parseFloat(taxasCartao) || 0;
-    return parseFloat((bruto - imp - custos - taxas).toFixed(2));
+    const percTaxas = parseFloat(percentualTaxasCartao) || 0;
+
+    // Calcula valores reais a partir das porcentagens
+    const valorImpostos = (bruto * percImp) / 100;
+    const valorTaxas = (bruto * percTaxas) / 100;
+
+    return parseFloat((bruto - valorImpostos - custos - valorTaxas).toFixed(2));
   }
 
   /**
@@ -1209,71 +1215,50 @@ window.Repasses = (() => {
      ============================================================ */
 
   /**
-   * Migra todos os convênios existentes para usar 60/40 (clínica/médico).
-   * Função temporária para atualizar dados já cadastrados.
+   * Executa a migração de todos os convênios para a nova regra de 40% clínica / 60% médico.
+   * Mostra confirmação ao usuário antes de executar.
    */
-  async function migrarPercentuaisParaSessentaQuarenta() {
-    console.log("🔄 Iniciando migração de percentuais para 60/40...");
+  async function executarMigracaoPercentuais() {
+    const confirmar = confirm(
+      "⚠️ ATENÇÃO: Esta ação irá atualizar TODOS os convênios existentes para a nova regra de repasse:\n\n" +
+        "• Clínica: 40%\n" +
+        "• Médico: 60%\n\n" +
+        "Deseja continuar?",
+    );
+
+    if (!confirmar) {
+      return;
+    }
 
     try {
-      const snapshot = await firebaseDb
-        .ref("repasses/lancamentos")
-        .once("value");
-      const lancamentos = snapshot.val();
+      Ui.mostrarToast("Iniciando migração de percentuais...", "aviso");
 
-      if (!lancamentos) {
-        console.log("⚠️ Nenhum lançamento encontrado");
-        Ui.mostrarToast("Nenhum repasse encontrado para migrar", "aviso");
-        return;
-      }
+      const resultado = await Db.migrarPercentuaisRepasse();
 
-      let contador = 0;
-      const updates = {};
+      const mensagem =
+        `Migração concluída!\n\n` +
+        `• Total de convênios analisados: ${resultado.total}\n` +
+        `• Convênios atualizados: ${resultado.atualizados}\n` +
+        `• Médicos processados: ${resultado.medicos}`;
 
-      // Percorre todos os médicos
-      for (const [medicoId, mesesData] of Object.entries(lancamentos)) {
-        // Percorre todos os meses do médico
-        for (const [mesAno, mesData] of Object.entries(mesesData)) {
-          // Percorre todos os convênios do mês
-          if (mesData.convenios) {
-            for (const [convenioId, convenioData] of Object.entries(
-              mesData.convenios,
-            )) {
-              // Atualiza os percentuais
-              updates[
-                `repasses/lancamentos/${medicoId}/${mesAno}/convenios/${convenioId}/percentualClinica`
-              ] = 60;
-              updates[
-                `repasses/lancamentos/${medicoId}/${mesAno}/convenios/${convenioId}/percentualMedico`
-              ] = 40;
-              contador++;
+      console.log("✅ " + mensagem);
 
-              console.log(
-                `✏️ Atualizando: ${convenioData.nomeConvenio || convenioId} - ${mesAno}`,
-              );
-            }
-          }
+      if (resultado.atualizados > 0) {
+        Ui.mostrarToast(
+          `${resultado.atualizados} convênios atualizados para 40% clínica / 60% médico`,
+          "sucesso",
+        );
+
+        // Recarregar os dados se houver médico selecionado
+        const selectMedico = document.getElementById("select-medico");
+        if (selectMedico && selectMedico.value) {
+          aoClicarCarregar();
         }
+      } else {
+        Ui.mostrarToast("Nenhum convênio precisou ser atualizado", "aviso");
       }
-
-      if (contador === 0) {
-        console.log("⚠️ Nenhum convênio encontrado para atualizar");
-        Ui.mostrarToast("Nenhum convênio encontrado para migrar", "aviso");
-        return;
-      }
-
-      // Aplica todas as atualizações de uma vez
-      await firebaseDb.ref().update(updates);
-
-      console.log(
-        `✅ Migração concluída! ${contador} convênios atualizados para 60/40`,
-      );
-      Ui.mostrarToast(
-        `${contador} convênios atualizados para 60% clínica / 40% médico`,
-        "sucesso",
-      );
     } catch (erro) {
-      console.error("❌ Erro na migração:", erro);
+      console.error("❌ Erro ao executar migração:", erro);
       Ui.mostrarToast("Erro ao migrar percentuais: " + erro.message, "erro");
     }
   }
@@ -1288,70 +1273,39 @@ window.Repasses = (() => {
     sincronizarValoresConvenio,
     aoClicarCarregar,
     aoAlterarReembolso,
-    migrarPercentuaisParaSessentaQuarenta,
+    executarMigracaoPercentuais,
   };
 })();
 
 /* ============================================================
    UTILITÁRIO DE MIGRAÇÃO (GLOBAL)
    ============================================================ */
-window.migrarRepasses6040 = async function () {
-  console.log("🔄 Iniciando migração de percentuais para 60/40...");
+/**
+ * Função global para migração via console.
+ * Uso: await window.migrarRepasses4060()
+ */
+window.migrarRepasses4060 = async function () {
+  console.log("🔄 Iniciando migração de percentuais para 40/60...");
 
   try {
-    const snapshot = await firebaseDb.ref("repasses/lancamentos").once("value");
-    const lancamentos = snapshot.val();
+    const resultado = await Db.migrarPercentuaisRepasse();
 
-    if (!lancamentos) {
-      console.log("⚠️ Nenhum lançamento encontrado");
-      alert("Nenhum repasse encontrado para migrar");
-      return;
-    }
+    console.log("✅ Migração concluída!");
+    console.log(`📊 Total analisado: ${resultado.total} convênios`);
+    console.log(`✏️ Atualizados: ${resultado.atualizados} convênios`);
+    console.log(`👥 Médicos processados: ${resultado.medicos}`);
 
-    let contador = 0;
-    const updates = {};
-
-    // Percorre todos os médicos
-    for (const [medicoId, mesesData] of Object.entries(lancamentos)) {
-      // Percorre todos os meses do médico
-      for (const [mesAno, mesData] of Object.entries(mesesData)) {
-        // Percorre todos os convênios do mês
-        if (mesData.convenios) {
-          for (const [convenioId, convenioData] of Object.entries(
-            mesData.convenios,
-          )) {
-            // Atualiza os percentuais
-            updates[
-              `repasses/lancamentos/${medicoId}/${mesAno}/convenios/${convenioId}/percentualClinica`
-            ] = 60;
-            updates[
-              `repasses/lancamentos/${medicoId}/${mesAno}/convenios/${convenioId}/percentualMedico`
-            ] = 40;
-            contador++;
-
-            console.log(
-              `✏️ Atualizando: ${convenioData.nomeConvenio || convenioId} - ${mesAno}`,
-            );
-          }
-        }
-      }
-    }
-
-    if (contador === 0) {
-      console.log("⚠️ Nenhum convênio encontrado para atualizar");
-      alert("Nenhum convênio encontrado para migrar");
-      return;
-    }
-
-    // Aplica todas as atualizações de uma vez
-    await firebaseDb.ref().update(updates);
-
-    console.log(
-      `✅ Migração concluída! ${contador} convênios atualizados para 60/40`,
+    alert(
+      `✅ Migração concluída!\n\n` +
+        `Total: ${resultado.total} convênios\n` +
+        `Atualizados: ${resultado.atualizados}\n` +
+        `Médicos: ${resultado.medicos}`,
     );
-    alert(`✅ ${contador} convênios atualizados para 60% clínica / 40% médico`);
+
+    return resultado;
   } catch (erro) {
     console.error("❌ Erro na migração:", erro);
     alert("❌ Erro ao migrar percentuais: " + erro.message);
+    throw erro;
   }
 };

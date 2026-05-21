@@ -619,6 +619,90 @@ window.Db = (() => {
       .update({ reembolsoClinica: valor, updatedAt: Date.now() });
   }
 
+  /**
+   * Migra todos os convênios de repasse existentes para a nova regra de 40% clínica / 60% médico.
+   * Atualiza apenas convênios que tenham percentuais diferentes dos novos padrões.
+   *
+   * @returns {Promise<{total: number, atualizados: number, medicos: number}>}
+   */
+  async function migrarPercentuaisRepasse() {
+    try {
+      console.log("🔄 Iniciando migração de percentuais de repasse...");
+
+      const snapshot = await firebaseDb
+        .ref("repasses/lancamentos")
+        .once("value");
+      const lancamentos = snapshot.val() || {};
+
+      let total = 0;
+      let atualizados = 0;
+      let medicos = 0;
+      const updates = {};
+
+      // Percorrer todos os médicos
+      Object.keys(lancamentos).forEach((medicoId) => {
+        medicos++;
+        const mesesMedico = lancamentos[medicoId];
+
+        // Percorrer todos os meses deste médico
+        Object.keys(mesesMedico).forEach((mesAno) => {
+          const dadosMes = mesesMedico[mesAno];
+
+          if (dadosMes.convenios) {
+            // Percorrer todos os convênios deste mês
+            Object.keys(dadosMes.convenios).forEach((convenioId) => {
+              const convenio = dadosMes.convenios[convenioId];
+              total++;
+
+              const percClinicaAtual = convenio.percentualClinica || 60;
+              const percMedicoAtual = convenio.percentualMedico || 40;
+
+              // Atualizar apenas se for diferente dos novos padrões
+              if (percClinicaAtual !== 40 || percMedicoAtual !== 60) {
+                const valorLiquido = convenio.valorLiquidoFinal || 0;
+
+                // Recalcular repasses com novos percentuais
+                const novoRepasseClinica = parseFloat(
+                  ((valorLiquido * 40) / 100).toFixed(2),
+                );
+                const novoRepasseMedico = parseFloat(
+                  ((valorLiquido * 60) / 100).toFixed(2),
+                );
+
+                const basePath = `${medicoId}/${mesAno}/convenios/${convenioId}`;
+                updates[`${basePath}/percentualClinica`] = 40;
+                updates[`${basePath}/percentualMedico`] = 60;
+                updates[`${basePath}/repasseClinica`] = novoRepasseClinica;
+                updates[`${basePath}/repasseMedico`] = novoRepasseMedico;
+                updates[`${basePath}/updatedAt`] = Date.now();
+
+                atualizados++;
+                console.log(
+                  `✅ Agendado: ${convenio.nomeConvenio} - ${mesAno}`,
+                );
+              }
+            });
+          }
+        });
+      });
+
+      // Executar todas as atualizações de uma vez
+      if (Object.keys(updates).length > 0) {
+        await firebaseDb.ref("repasses/lancamentos").update(updates);
+        console.log(
+          `✅ Migração concluída: ${atualizados} convênios atualizados de ${total}`,
+        );
+      } else {
+        console.log("ℹ️ Nenhum convênio precisa ser atualizado");
+      }
+
+      return { total, atualizados, medicos };
+    } catch (erro) {
+      console.error("❌ Erro ao migrar percentuais de repasse:", erro);
+      throw new Error("Não foi possível migrar os percentuais de repasse.");
+    }
+  }
+
   /* ============================================================
      EXPORTAÇÃO DO MÓDULO
      ============================================================ */
@@ -649,5 +733,6 @@ window.Db = (() => {
     atualizarAvulsoRepasse,
     excluirAvulsoRepasse,
     salvarReembolsoClinica,
+    migrarPercentuaisRepasse,
   };
 })();
