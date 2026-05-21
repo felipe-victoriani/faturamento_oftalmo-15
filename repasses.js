@@ -402,8 +402,8 @@ window.Repasses = (() => {
     const tbody = document.getElementById("corpo-tabela-repasse");
     tbody.innerHTML = "";
 
-    // Carrega dados de faturamento para referência
-    Db.ouvirTabelas((dadosFaturamento) => {
+    // Busca dados de faturamento uma vez (sem listener)
+    Db.obterTabelas().then((dadosFaturamento) => {
       renderizarLinhasConvenio(dados.convenios || {}, dadosFaturamento);
       renderizarLinhasAvulsas(dados.avulsos || {});
 

@@ -41,6 +41,22 @@ window.Db = (() => {
   }
 
   /**
+   * Obtém todas as tabelas de convênios uma única vez (sem listener).
+   * Usado quando precisamos dos dados apenas uma vez, sem atualizações em tempo real.
+   *
+   * @returns {Promise<Object>} Snapshot de todas as tabelas
+   */
+  async function obterTabelas() {
+    try {
+      const snapshot = await refTabelas.once("value");
+      return snapshot.val() || {};
+    } catch (erro) {
+      console.error("Erro ao obter tabelas:", erro);
+      return {};
+    }
+  }
+
+  /**
    * Ouve mudanças nas configurações globais.
    *
    * @param {Function} callback - Recebe snapshot.val() das configurações
@@ -709,6 +725,7 @@ window.Db = (() => {
 
   return {
     ouvirTabelas,
+    obterTabelas,
     ouvirConfiguracoes,
     ouvirConexao,
     salvarRegistro,
