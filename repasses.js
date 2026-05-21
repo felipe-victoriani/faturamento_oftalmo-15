@@ -88,10 +88,7 @@ window.Repasses = (() => {
       .getElementById("btn-carregar-repasse")
       .addEventListener("click", aoClicarCarregar);
 
-    // Campo de reembolso clínica
-    document
-      .getElementById("campo-reembolso-clinica")
-      .addEventListener("change", aoAlterarReembolso);
+    // Campo de reembolso clínica removido
 
     // Botão novo avulso
     document
@@ -441,9 +438,7 @@ window.Repasses = (() => {
         calcularEAtualizarCards(linhas, dados.reembolsoClinica || 0);
       }
 
-      // Atualiza campo de reembolso
-      document.getElementById("campo-reembolso-clinica").value =
-        dados.reembolsoClinica || 0;
+      // Atualiza campo de reembolso removido
     });
   }
 
@@ -1282,18 +1277,7 @@ window.Repasses = (() => {
     Ui.mostrarToast("Lançamento excluído", "sucesso");
   }
 
-  /**
-   * Handler do campo de reembolso clínica.
-   * @param {Event} evento
-   */
-  function aoAlterarReembolso(evento) {
-    const valor = parseFloat(evento.target.value) || 0;
-    Db.salvarReembolsoClinica(medicoAtivoId, mesAnoAtivo, valor);
-
-    // Atualiza os cards
-    const linhas = document.querySelectorAll("#corpo-tabela-repasse tr");
-    calcularEAtualizarCards(linhas, valor);
-  }
+  // Handler do campo de reembolso clínica removido
 
   /* ============================================================
      UTILITÁRIOS
@@ -1515,7 +1499,6 @@ window.Repasses = (() => {
     carregarRepasse,
     sincronizarValoresConvenio,
     aoClicarCarregar,
-    aoAlterarReembolso,
     executarMigracaoPercentuais,
   };
 })();
