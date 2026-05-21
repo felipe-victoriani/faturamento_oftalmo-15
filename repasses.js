@@ -55,8 +55,9 @@ window.Repasses = (() => {
     Ui.renderizarCardsRepasse({
       totalProducao: 0,
       totalRecebido: 0,
+      totalValorLiquido: 0,
+      totalRepasseClinica: 0,
       reembolsoClinica: 0,
-      liquidoReceber: 0,
     });
 
     // Registrar eventos (apenas uma vez)
@@ -427,8 +428,9 @@ window.Repasses = (() => {
         Ui.renderizarCardsRepasse({
           totalProducao: 0,
           totalRecebido: 0,
+          totalValorLiquido: 0,
+          totalRepasseClinica: 0,
           reembolsoClinica: 0,
-          liquidoReceber: 0,
         });
       } else {
         renderizarTotalizadores(linhas);
@@ -514,6 +516,17 @@ window.Repasses = (() => {
       const percMedico = dadosConvenio.percentualMedico || 60;
       const partilha = calcularPartilha(valorLiquido, percClinica, percMedico);
 
+      // Verifica se é Unimed para tornar Rep. Médico editável
+      const isUnimed = convenio.nome.toLowerCase().includes("unimed");
+      const classeRepMedico = isUnimed ? "celula-editavel" : "celula-calculada";
+      const editavelRepMedico = isUnimed ? "true" : "false";
+
+      // Para Unimed, se já tem repasseMedico salvo, usa ele; senão usa o calculado
+      const repasseMedicoExibido =
+        isUnimed && dadosConvenio.repasseMedico !== undefined
+          ? dadosConvenio.repasseMedico
+          : partilha.repasseMedico;
+
       console.log(`    💵 Valores calculados:`, {
         valorBruto,
         impostos,
@@ -521,7 +534,10 @@ window.Repasses = (() => {
         taxasCartao,
         valorLiquido,
         repasseClinica: partilha.repasseClinica,
-        repasseMedico: partilha.repasseMedico,
+        repasseMedicoCalculado: partilha.repasseMedico,
+        repasseMedicoSalvo: dadosConvenio.repasseMedico,
+        repasseMedicoExibido,
+        isUnimed,
       });
 
       tr.innerHTML = `
@@ -533,7 +549,7 @@ window.Repasses = (() => {
         <td><span class="celula-label">Taxas Cartão</span><span class="celula-editavel celula-valor" data-campo="taxasCartao" data-tipo="percentual" contenteditable="${editavel}">${taxasCartao.toFixed(2)}%</span></td>
         <td><span class="celula-label">Valor Líquido</span><span class="celula-calculada celula-valor">${Ui.formatarBRL(valorLiquido)}</span></td>
         <td><span class="celula-label">Rep. Clínica</span><span class="celula-calculada celula-valor">${Ui.formatarBRL(partilha.repasseClinica)}</span></td>
-        <td><span class="celula-label">Rep. Médico</span><span class="celula-calculada celula-valor">${Ui.formatarBRL(partilha.repasseMedico)}</span></td>
+        <td><span class="celula-label">Rep. Médico</span><span class="${classeRepMedico} celula-valor" data-campo="repasseMedico" contenteditable="${editavelRepMedico}">${Ui.formatarBRL(repasseMedicoExibido)}</span></td>
         <td></td>
       `;
 
@@ -543,14 +559,26 @@ window.Repasses = (() => {
           `[Repasses] Adicionando listener em célula editável:`,
           celula.dataset.campo,
           `contenteditable=${celula.contentEditable}`,
+          `isUnimed=${isUnimed}`,
+          `convenioNome=${convenio.nome}`,
         );
 
         celula.addEventListener("blur", (e) => {
           console.log(
             `[Repasses] Evento blur disparado em:`,
             e.target.dataset.campo,
+            `isUnimed=${isUnimed}`,
           );
-          aoEditarCelulaConvenio(e, convenioId);
+
+          // Se for a célula de repasseMedico do Unimed, usa tratamento especial
+          if (e.target.dataset.campo === "repasseMedico" && isUnimed) {
+            console.log(
+              `[Repasses] ✅ DETECTADO: Edição de Rep. Médico do Unimed!`,
+            );
+            aoEditarRepasseMedicoUnimed(e, convenioId);
+          } else {
+            aoEditarCelulaConvenio(e, convenioId);
+          }
         });
 
         celula.addEventListener("keydown", (e) => {
@@ -693,7 +721,7 @@ window.Repasses = (() => {
   }
 
   /**
-   * Calcula os totais e atualiza os 4 cards de resumo acima da tabela.
+   * Calcula os totais e atualiza os 5 cards de resumo acima da tabela.
    * @param {NodeList} linhas - Todas as <tr> do <tbody>
    * @param {number} reembolsoClinica
    */
@@ -710,6 +738,8 @@ window.Repasses = (() => {
 
     let totalProducao = 0;
     let totalRecebido = 0;
+    let totalValorLiquido = 0;
+    let totalRepasseClinica = 0;
     let reembolsoAvulsos = 0;
 
     linhas.forEach((linha, indexLinha) => {
@@ -781,27 +811,31 @@ window.Repasses = (() => {
       };
 
       const valorBruto = getValor(2); // Valor bruto (coluna 3)
+      const valorLiquido = getValor(6); // Valor líquido (coluna 7)
+      const repasseClinica = getValor(7); // Repasse clínica (coluna 8)
       const repasseMedico = getValor(8); // Repasse médico (coluna 9)
 
       console.log(
-        `  ➕ Linha ${indexLinha}: valorBruto=${valorBruto}, repasseMedico=${repasseMedico}`,
+        `  ➕ Linha ${indexLinha}: valorBruto=${valorBruto}, valorLiquido=${valorLiquido}, repasseClinica=${repasseClinica}, repasseMedico=${repasseMedico}`,
       );
 
       totalProducao += valorBruto;
       totalRecebido += repasseMedico;
+      totalValorLiquido += valorLiquido;
+      totalRepasseClinica += repasseClinica;
     });
 
     // Soma reembolso manual + reembolsos de avulsos
     const reembolsoTotal = reembolsoClinica + reembolsoAvulsos;
-    const liquidoReceber = totalProducao - totalRecebido - reembolsoTotal;
 
     console.log("✅ calcularEAtualizarCards - Totais calculados:", {
       totalProducao,
       totalRecebido,
+      totalValorLiquido,
+      totalRepasseClinica,
       reembolsoClinica: reembolsoClinica,
       reembolsoAvulsos: reembolsoAvulsos,
       reembolsoTotal: reembolsoTotal,
-      liquidoReceber,
     });
 
     console.log(
@@ -810,8 +844,9 @@ window.Repasses = (() => {
     Ui.renderizarCardsRepasse({
       totalProducao,
       totalRecebido,
+      totalValorLiquido,
+      totalRepasseClinica,
       reembolsoClinica: reembolsoTotal,
-      liquidoReceber,
     });
   }
 
@@ -840,6 +875,30 @@ window.Repasses = (() => {
     console.log(`[Repasses] Valor parseado: ${valor}`);
 
     salvarCelulaConvenio(convenioId, campo, valor);
+  }
+
+  /**
+   * Handler especial para edição manual do Repasse Médico do Unimed.
+   * Salva o valor editado diretamente e recalcula Rep. Clínica.
+   * @param {Event} evento
+   * @param {string} convenioId
+   */
+  function aoEditarRepasseMedicoUnimed(evento, convenioId) {
+    const celula = evento.target;
+    let valor = celula.textContent.trim();
+
+    console.log(`[Repasses] 🎯 aoEditarRepasseMedicoUnimed - CHAMADO!`);
+    console.log(`  🏥 Convênio ID: ${convenioId}`);
+    console.log(`  📝 Valor original na célula: "${valor}"`);
+    console.log(`  📍 Campo: ${celula.dataset.campo}`);
+
+    // Remove formatação de moeda
+    valor = valor.replace(/[R$\s.]/g, "").replace(",", ".");
+    const valorNumerico = parseFloat(valor) || 0;
+
+    console.log(`  💵 Valor após parseMoeda: R$ ${valorNumerico.toFixed(2)}`);
+
+    salvarRepasseMedicoUnimed(convenioId, valorNumerico);
   }
 
   /**
@@ -925,6 +984,65 @@ window.Repasses = (() => {
     );
 
     Ui.mostrarToast("Valor atualizado", "sucesso");
+  }
+
+  /**
+   * Salva o valor editado manualmente do Repasse Médico do Unimed.
+   * Salva apenas o campo repasseMedico sem recalcular outros valores.
+   *
+   * @param {string} convenioId
+   * @param {number} repasseMedicoEditado - Valor editado pelo usuário
+   */
+  function salvarRepasseMedicoUnimed(convenioId, repasseMedicoEditado) {
+    if (!medicoAtivoId || !mesAnoAtivo) {
+      console.error(
+        "[Repasses] ❌ ERRO: medicoAtivoId ou mesAnoAtivo não definidos!",
+      );
+      return;
+    }
+
+    console.log(`[Repasses] 💾 salvarRepasseMedicoUnimed - INÍCIO`);
+    console.log(`  📋 Médico ID: ${medicoAtivoId}`);
+    console.log(`  📅 Mês/Ano: ${mesAnoAtivo}`);
+    console.log(`  🏥 Convênio ID: ${convenioId}`);
+    console.log(
+      `  💰 Repasse Médico Editado: R$ ${repasseMedicoEditado.toFixed(2)}`,
+    );
+
+    // Busca dados atuais do convênio
+    const dadosConvenio = dadosAtivos.convenios?.[convenioId] || {};
+    console.log(
+      `[Repasses] 📦 Dados atuais do convênio:`,
+      JSON.stringify(dadosConvenio, null, 2),
+    );
+
+    // Atualiza apenas o repasseMedico mantendo os demais valores
+    const dadosParaSalvar = {
+      ...dadosConvenio,
+      repasseMedico: repasseMedicoEditado,
+    };
+
+    console.log(
+      `[Repasses] 💾 Dados que serão salvos no Firebase:`,
+      JSON.stringify(dadosParaSalvar, null, 2),
+    );
+
+    // Salva no Firebase
+    console.log(`[Repasses] 🔥 Chamando Db.salvarConvenioRepasse...`);
+    Db.salvarConvenioRepasse(
+      medicoAtivoId,
+      mesAnoAtivo,
+      convenioId,
+      dadosParaSalvar,
+    )
+      .then(() => {
+        console.log(`[Repasses] ✅ Firebase respondeu: salvo com sucesso!`);
+        Ui.mostrarToast("Repasse Médico Unimed atualizado", "sucesso");
+      })
+      .catch((erro) => {
+        console.error(`[Repasses] ❌ Erro ao salvar no Firebase:`, erro);
+        Ui.mostrarToast("Erro ao atualizar: " + erro.message, "erro");
+      });
   }
 
   /* ============================================================

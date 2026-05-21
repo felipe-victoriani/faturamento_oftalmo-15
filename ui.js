@@ -64,6 +64,8 @@ window.Ui = (() => {
 
     dinheiro: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M18.5 9.5v5M5.5 9.5v5"/></svg>`,
 
+    edificio: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M8 10h.01"></path><path d="M16 10h.01"></path><path d="M12 10h.01"></path><path d="M8 14h.01"></path><path d="M16 14h.01"></path><path d="M12 14h.01"></path></svg>`,
+
     pessoas: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
   };
 
@@ -349,14 +351,15 @@ window.Ui = (() => {
   }
 
   /**
-   * Renderiza os 4 cards de resumo da view de Repasses.
+   * Renderiza os 5 cards de resumo da view de Repasses.
    * Chamada por repasses.js após calcular os totais.
    *
    * @param {Object} totais
    * @param {number} totais.totalProducao    - Soma de todos os valorBruto
    * @param {number} totais.totalRecebido    - Soma dos repasseMedico já recebidos
+   * @param {number} totais.totalValorLiquido - Soma de todos os valores líquidos
+   * @param {number} totais.totalRepasseClinica - Soma dos repasses para clínica
    * @param {number} totais.reembolsoClinica - Valor manual do campo de reembolso
-   * @param {number} totais.liquidoReceber   - totalProducao - totalRecebido - reembolsoClinica
    */
   function renderizarCardsRepasse(totais) {
     console.log("🎴 renderizarCardsRepasse - Totais recebidos:", totais);
@@ -380,6 +383,20 @@ window.Ui = (() => {
         classe: "card-resumo--producao",
       },
       {
+        titulo: "Valor Líquido",
+        valor: formatarBRL(totais.totalValorLiquido || 0),
+        descricao: "Total após deduções",
+        icone: Icones.dinheiro,
+        classe: "card-resumo--faturamento",
+      },
+      {
+        titulo: "Rep. Clínica",
+        valor: formatarBRL(totais.totalRepasseClinica || 0),
+        descricao: "Repasse clínica total",
+        icone: Icones.edificio,
+        classe: "",
+      },
+      {
         titulo: "Total Recebido",
         valor: formatarBRL(totais.totalRecebido || 0),
         descricao: "Repasse médico total",
@@ -392,13 +409,6 @@ window.Ui = (() => {
         descricao: "Valor a descontar",
         icone: Icones.atencao,
         classe: "",
-      },
-      {
-        titulo: "Líquido a Receber",
-        valor: formatarBRL(totais.liquidoReceber || 0),
-        descricao: "Produção - Recebido - Reembolso",
-        icone: Icones.dinheiro,
-        classe: "card-resumo--faturamento",
       },
     ];
 
