@@ -83,11 +83,18 @@
 
     /* Ouvir todas as tabelas (convênios) */
     Db.ouvirTabelas((tabelas) => {
+      console.log("🔥 Callback ouvirTabelas - Dados recebidos:", tabelas);
+      console.log(
+        "📊 Callback ouvirTabelas - Número de convênios:",
+        tabelas ? Object.keys(tabelas).length : 0,
+      );
+
       estadoApp.tabelas = tabelas;
       Ui.pararSkeletonLoading();
 
       if (!tabelas || Object.keys(tabelas).length === 0) {
         /* Nenhum convênio — mostrar mensagem */
+        console.log("⚠️ Callback ouvirTabelas - Nenhum convênio encontrado");
         Ui.renderizarAbas({}, null);
         Ui.renderizarCards({
           producao: 0,
@@ -112,9 +119,14 @@
       /* Definir convênio ativo (primeiro ou último selecionado) */
       if (!estadoApp.convenioAtivo || !tabelas[estadoApp.convenioAtivo]) {
         estadoApp.convenioAtivo = Object.keys(tabelas)[0];
+        console.log(
+          "📌 Callback ouvirTabelas - Convênio ativo definido:",
+          estadoApp.convenioAtivo,
+        );
       }
 
       /* Renderizar interface */
+      console.log("🚀 Callback ouvirTabelas - Chamando renderizarInterface");
       renderizarInterface();
 
       /* Atualizar timestamp de sincronização */
@@ -147,9 +159,18 @@
    * Renderiza toda a interface com base no estado atual.
    */
   function renderizarInterface() {
+    console.log("🖼️ renderizarInterface - Iniciando renderização...");
+    console.log("📊 renderizarInterface - Estado atual:", {
+      tabelas: estadoApp.tabelas ? Object.keys(estadoApp.tabelas) : null,
+      convenioAtivo: estadoApp.convenioAtivo,
+    });
+
     const { tabelas, convenioAtivo } = estadoApp;
 
-    if (!tabelas) return;
+    if (!tabelas) {
+      console.log("⚠️ renderizarInterface - Tabelas não disponíveis");
+      return;
+    }
 
     /* Renderizar abas de convênios */
     Ui.renderizarAbas(tabelas, convenioAtivo);
@@ -157,9 +178,17 @@
     /* Calcular totais do convênio ativo */
     const convenio = tabelas[convenioAtivo];
     const registros = convenio ? convenio.registros : null;
+
+    console.log("📋 renderizarInterface - Convênio ativo:", convenio);
+    console.log("📝 renderizarInterface - Registros:", registros);
+
     const totais = calcularTotais(registros);
 
     /* Renderizar cards de resumo */
+    console.log(
+      "🎴 renderizarInterface - Chamando renderizarCards com:",
+      totais,
+    );
     Ui.renderizarCards(totais);
 
     /* Renderizar tabela */
@@ -183,6 +212,8 @@
    * Calcula totais de um conjunto de registros.
    */
   function calcularTotais(registros) {
+    console.log("📊 calcularTotais - Registros recebidos:", registros);
+
     const totais = {
       producao: 0,
       bruto: 0,
@@ -192,7 +223,10 @@
       pendente: 0,
     };
 
-    if (!registros) return totais;
+    if (!registros) {
+      console.log("⚠️ calcularTotais - Registros vazios");
+      return totais;
+    }
 
     Object.values(registros).forEach((registro) => {
       totais.producao += parseFloat(registro.valor) || 0;
@@ -204,6 +238,7 @@
 
     totais.pendente = totais.liquido - totais.recebido;
 
+    console.log("✅ calcularTotais - Totais calculados:", totais);
     return totais;
   }
 

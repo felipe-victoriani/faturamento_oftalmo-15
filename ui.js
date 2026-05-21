@@ -274,7 +274,10 @@ window.Ui = (() => {
    * @param {Object} totais - Objeto com os totais calculados
    */
   function renderizarCards(totais) {
+    console.log("🎴 renderizarCards - Totais recebidos:", totais);
+
     const container = document.getElementById("cards-resumo");
+    console.log("📦 renderizarCards - Container encontrado:", container);
 
     const cards = [
       {
@@ -337,6 +340,12 @@ window.Ui = (() => {
     `,
       )
       .join("");
+
+    console.log("✅ renderizarCards - Cards renderizados com sucesso!");
+    console.log(
+      "📝 renderizarCards - HTML gerado:",
+      container.innerHTML.substring(0, 200) + "...",
+    );
   }
 
   /**
@@ -350,8 +359,17 @@ window.Ui = (() => {
    * @param {number} totais.liquidoReceber   - totalProducao - totalRecebido - reembolsoClinica
    */
   function renderizarCardsRepasse(totais) {
+    console.log("🎴 renderizarCardsRepasse - Totais recebidos:", totais);
+
     const container = document.querySelector(".repasses-cards");
-    if (!container) return;
+    console.log("📦 renderizarCardsRepasse - Container encontrado:", container);
+
+    if (!container) {
+      console.error(
+        "❌ renderizarCardsRepasse - Container .repasses-cards não encontrado!",
+      );
+      return;
+    }
 
     const cards = [
       {
@@ -400,6 +418,12 @@ window.Ui = (() => {
     `,
       )
       .join("");
+
+    console.log("✅ renderizarCardsRepasse - Cards renderizados!");
+    console.log(
+      "📝 renderizarCardsRepasse - HTML gerado (primeiros 200 chars):",
+      container.innerHTML.substring(0, 200) + "...",
+    );
   }
 
   /* ============================================================

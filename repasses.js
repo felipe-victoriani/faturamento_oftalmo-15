@@ -50,6 +50,15 @@ window.Repasses = (() => {
     // Popula o seletor de meses (sempre atualiza)
     popularSeletorMeses();
 
+    // Renderiza os cards zerados na inicialização
+    console.log("🎴 Renderizando cards iniciais zerados...");
+    Ui.renderizarCardsRepasse({
+      totalProducao: 0,
+      totalRecebido: 0,
+      reembolsoClinica: 0,
+      liquidoReceber: 0,
+    });
+
     // Registrar eventos (apenas uma vez)
     if (!jaInicializado) {
       jaInicializado = true;
@@ -313,6 +322,10 @@ window.Repasses = (() => {
    * @param {string} mesAno - Formato "YYYY-MM"
    */
   function carregarRepasse(medicoId, mesAno) {
+    console.log("🔄 carregarRepasse - Iniciando carregamento...");
+    console.log("👨‍⚕️ carregarRepasse - Médico ID:", medicoId);
+    console.log("📅 carregarRepasse - Mês/Ano:", mesAno);
+
     // Atualiza estado
     medicoAtivoId = medicoId;
     mesAnoAtivo = mesAno;
@@ -326,7 +339,11 @@ window.Repasses = (() => {
     }
 
     // Escuta mudanças no repasse
+    console.log("👂 carregarRepasse - Iniciando listener do Firebase...");
     Db.ouvirRepasse(medicoId, mesAno, (dados) => {
+      console.log("🔥 carregarRepasse - Callback do Firebase disparado!");
+      console.log("📦 carregarRepasse - Dados recebidos do Firebase:", dados);
+
       dadosAtivos = dados;
       renderizarRepasse(dados);
       Ui.pararSkeletonLoading("loading-repasse");
@@ -399,20 +416,45 @@ window.Repasses = (() => {
    * @param {Object} dados - Snapshot completo do repasse
    */
   function renderizarRepasse(dados) {
+    console.log("🖼️ renderizarRepasse - Dados recebidos:", dados);
+
     const tbody = document.getElementById("corpo-tabela-repasse");
     tbody.innerHTML = "";
 
     // Busca dados de faturamento uma vez (sem listener)
+    console.log("📡 renderizarRepasse - Buscando tabelas de faturamento...");
     Db.obterTabelas().then((dadosFaturamento) => {
+      console.log("✅ renderizarRepasse - Tabelas de faturamento recebidas");
+
       renderizarLinhasConvenio(dados.convenios || {}, dadosFaturamento);
       renderizarLinhasAvulsas(dados.avulsos || {});
 
       // Atualiza totalizadores
       const linhas = tbody.querySelectorAll("tr");
-      renderizarTotalizadores(linhas);
+      console.log(
+        "📋 renderizarRepasse - Número de linhas renderizadas:",
+        linhas.length,
+      );
 
-      // Atualiza cards
-      calcularEAtualizarCards(linhas, dados.reembolsoClinica || 0);
+      if (linhas.length === 0) {
+        console.log(
+          "⚠️ renderizarRepasse - NENHUMA LINHA RENDERIZADA! Tabela vazia.",
+        );
+        // Renderiza cards zerados
+        Ui.renderizarCardsRepasse({
+          totalProducao: 0,
+          totalRecebido: 0,
+          reembolsoClinica: 0,
+          liquidoReceber: 0,
+        });
+      } else {
+        renderizarTotalizadores(linhas);
+        // Atualiza cards
+        console.log(
+          "🎴 renderizarRepasse - Chamando calcularEAtualizarCards...",
+        );
+        calcularEAtualizarCards(linhas, dados.reembolsoClinica || 0);
+      }
 
       // Atualiza campo de reembolso
       document.getElementById("campo-reembolso-clinica").value =
@@ -428,14 +470,36 @@ window.Repasses = (() => {
    * @param {Object} faturamento - Snapshot de faturamento/tabelas (para puxar valorLiquido)
    */
   function renderizarLinhasConvenio(convenios, faturamento) {
+    console.log("📋 renderizarLinhasConvenio - Iniciando...");
+    console.log("  📦 Convênios recebidos:", convenios);
+    console.log(
+      "  📊 Faturamento recebido:",
+      faturamento ? Object.keys(faturamento).length + " convênios" : "null",
+    );
+
     const tbody = document.getElementById("corpo-tabela-repasse");
 
-    if (!faturamento) return;
+    if (!faturamento) {
+      console.log(
+        "  ⚠️ renderizarLinhasConvenio - Faturamento vazio, nenhuma linha será renderizada",
+      );
+      return;
+    }
+
+    let linhasRenderizadas = 0;
 
     // Para cada convênio cadastrado no sistema
     Object.entries(faturamento).forEach(([convenioId, convenio]) => {
       const dadosConvenio = convenios[convenioId] || {};
       const temDados = dadosConvenio.valorLiquidoOrigem > 0;
+
+      console.log(
+        `  📝 Processando convênio: ${convenio.nome} (ID: ${convenioId})`,
+      );
+      console.log(
+        `    💰 valorLiquidoOrigem: ${dadosConvenio.valorLiquidoOrigem || 0}`,
+      );
+      console.log(`    ✅ temDados: ${temDados}`);
 
       // Sempre permitir edição, mesmo sem dados
       const editavel = "true";
@@ -466,6 +530,16 @@ window.Repasses = (() => {
       const percClinica = dadosConvenio.percentualClinica || 40;
       const percMedico = dadosConvenio.percentualMedico || 60;
       const partilha = calcularPartilha(valorLiquido, percClinica, percMedico);
+
+      console.log(`    💵 Valores calculados:`, {
+        valorBruto,
+        impostos,
+        custosPacotes,
+        taxasCartao,
+        valorLiquido,
+        repasseClinica: partilha.repasseClinica,
+        repasseMedico: partilha.repasseMedico,
+      });
 
       tr.innerHTML = `
         <td><span class="celula-label">Convênio</span><span class="celula-valor">${convenio.nome}</span></td>
@@ -513,7 +587,13 @@ window.Repasses = (() => {
       });
 
       tbody.appendChild(tr);
+      linhasRenderizadas++;
+      console.log(`  ✅ Linha ${linhasRenderizadas} adicionada ao tbody`);
     });
+
+    console.log(
+      `✅ renderizarLinhasConvenio - Total de ${linhasRenderizadas} linhas renderizadas`,
+    );
   }
 
   /**
@@ -560,8 +640,8 @@ window.Repasses = (() => {
         <td><span class="celula-label">Rep. Clínica</span><span class="celula-calculada celula-valor">${Ui.formatarBRL(repasseClinica)}</span></td>
         <td><span class="celula-label">Rep. Médico</span><span class="celula-calculada celula-valor">${Ui.formatarBRL(repasseMedico)}</span></td>
         <td class="celula-acoes">
-          <button type="button" class="btn-icone btn-editar-avulso" title="Editar" aria-label="Editar lançamento">${Icones.editar}</button>
-          <button type="button" class="btn-icone btn-excluir-avulso" title="Excluir" aria-label="Excluir lançamento">${Icones.lixeira}</button>
+          <button type="button" class="btn-icone btn-editar-avulso" title="Editar" aria-label="Editar lançamento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button type="button" class="btn-icone btn-excluir-avulso" title="Excluir" aria-label="Excluir lançamento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
         </td>
       `;
 
@@ -635,25 +715,62 @@ window.Repasses = (() => {
    * @param {number} reembolsoClinica
    */
   function calcularEAtualizarCards(linhas, reembolsoClinica) {
+    console.log("📊 calcularEAtualizarCards - Iniciando cálculo...");
+    console.log(
+      "📋 calcularEAtualizarCards - Número de linhas:",
+      linhas.length,
+    );
+    console.log(
+      "💰 calcularEAtualizarCards - Reembolso clínica:",
+      reembolsoClinica,
+    );
+
     let totalProducao = 0;
     let totalRecebido = 0;
 
-    linhas.forEach((linha) => {
+    linhas.forEach((linha, indexLinha) => {
       const celulas = linha.querySelectorAll("td");
-      if (celulas.length < 9) return;
+      console.log(
+        `  📄 Linha ${indexLinha}: ${celulas.length} células encontradas`,
+      );
+
+      if (celulas.length < 9) {
+        console.log(`  ⚠️ Linha ${indexLinha} ignorada - menos de 9 células`);
+        return;
+      }
 
       // Pegar valores dos spans .celula-valor
       const getValor = (index) => {
         const span = celulas[index].querySelector(".celula-valor");
-        return span ? parseMoeda(span.textContent) : 0;
+        const texto = span ? span.textContent : "";
+        const valor = span ? parseMoeda(texto) : 0;
+        console.log(`    🔢 Célula[${index}]: "${texto}" → ${valor}`);
+        return valor;
       };
 
-      totalProducao += getValor(2); // Valor bruto (coluna 3)
-      totalRecebido += getValor(8); // Repasse médico (coluna 9)
+      const valorBruto = getValor(2); // Valor bruto (coluna 3)
+      const repasseMedico = getValor(8); // Repasse médico (coluna 9)
+
+      console.log(
+        `  ➕ Linha ${indexLinha}: valorBruto=${valorBruto}, repasseMedico=${repasseMedico}`,
+      );
+
+      totalProducao += valorBruto;
+      totalRecebido += repasseMedico;
     });
 
     const liquidoReceber = totalProducao - totalRecebido - reembolsoClinica;
 
+    console.log("✅ calcularEAtualizarCards - Totais calculados:", {
+      totalProducao,
+      totalRecebido,
+      reembolsoClinica,
+      liquidoReceber,
+    });
+
+    console.log(
+      "🚀 calcularEAtualizarCards - Chamando Ui.renderizarCardsRepasse...",
+    );
     Ui.renderizarCardsRepasse({
       totalProducao,
       totalRecebido,
@@ -1068,8 +1185,14 @@ window.Repasses = (() => {
    * @returns {number}
    */
   function parseMoeda(texto) {
-    if (!texto) return 0;
-    return parseFloat(texto.replace(/[R$\s.]/g, "").replace(",", ".")) || 0;
+    if (!texto) {
+      console.log("    💱 parseMoeda: texto vazio → 0");
+      return 0;
+    }
+    const limpo = texto.replace(/[R$\s.]/g, "").replace(",", ".");
+    const numero = parseFloat(limpo) || 0;
+    console.log(`    💱 parseMoeda: "${texto}" → "${limpo}" → ${numero}`);
+    return numero;
   }
 
   /**
