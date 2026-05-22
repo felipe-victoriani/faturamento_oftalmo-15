@@ -404,7 +404,7 @@ window.Ui = (() => {
         classe: "card-resumo--financeiro",
       },
       {
-        titulo: "Reembolso Clínica",
+        titulo: "Reembolso da clínica para o médico",
         valor: formatarBRL(totais.reembolsoClinica || 0),
         descricao: "Valor a descontar",
         icone: Icones.atencao,
