@@ -95,6 +95,11 @@ window.Repasses = (() => {
       .getElementById("btn-novo-avulso")
       .addEventListener("click", abrirModalNovoAvulso);
 
+    // Botão exportar PDF
+    document
+      .getElementById("btn-exportar-pdf-repasse")
+      .addEventListener("click", gerarPDF);
+
     // Form de avulso
     document
       .getElementById("form-avulso")
@@ -1280,6 +1285,213 @@ window.Repasses = (() => {
   // Handler do campo de reembolso clínica removido
 
   /* ============================================================
+     EXPORTAÇÃO PDF
+     ============================================================ */
+
+  /**
+   * Gera e baixa um PDF com o repasse do médico/mês atualmente carregado.
+   * Usa jsPDF + jspdf-autotable (carregados via CDN no index.html).
+   */
+  function gerarPDF() {
+    if (!medicoAtivoId || !mesAnoAtivo) {
+      Ui.mostrarToast("Carregue um repasse antes de exportar", "aviso");
+      return;
+    }
+
+    const tbody = document.getElementById("corpo-tabela-repasse");
+    if (!tbody || tbody.querySelectorAll("tr").length === 0) {
+      Ui.mostrarToast("Nenhum dado para exportar", "aviso");
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
+
+    // ── Cabeçalho ──────────────────────────────────────────────
+    const nomeMedico =
+      document.getElementById("caption-medico-repasse").textContent.trim() ||
+      medicoAtivoId;
+    const mesTexto =
+      document.getElementById("caption-mes-repasse").textContent.trim() ||
+      mesAnoAtivo;
+    const dataGeracao = new Date().toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const corPrimaria = [41, 98, 255]; // azul
+    const corCinza = [100, 116, 139]; // slate-500
+    const corBorda = [226, 232, 240]; // slate-200
+
+    // Faixa de título
+    doc.setFillColor(...corPrimaria);
+    doc.rect(0, 0, 297, 18, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text("REPASSE MÉDICO", 14, 11);
+
+    // Subtítulo (médico + mês)
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${nomeMedico}  ·  ${mesTexto}`, 14, 15.5);
+
+    // Data de geração (canto direito)
+    doc.setFontSize(7);
+    doc.setTextColor(...corCinza);
+    doc.text(`Gerado em: ${dataGeracao}`, 283, 15.5, { align: "right" });
+
+    // ── Cards de resumo ────────────────────────────────────────
+    const cards = document.querySelectorAll(".repasses-cards .card-resumo");
+    let xCard = 14;
+    const yCard = 23;
+    const cardW = 52;
+    const cardH = 16;
+    const gap = 4;
+
+    doc.setTextColor(30, 30, 30);
+    cards.forEach((card) => {
+      const titulo =
+        card.querySelector(".card-resumo__titulo")?.textContent.trim() || "";
+      const valor =
+        card.querySelector(".card-resumo__valor")?.textContent.trim() || "";
+
+      doc.setDrawColor(...corBorda);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(xCard, yCard, cardW, cardH, 2, 2, "FD");
+
+      doc.setFontSize(6.5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...corCinza);
+      doc.text(titulo, xCard + 3, yCard + 5);
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 30, 30);
+      doc.text(valor, xCard + 3, yCard + 12);
+
+      xCard += cardW + gap;
+    });
+
+    // ── Tabela principal ───────────────────────────────────────
+    const colunas = [
+      { header: "Convênio / Descrição", dataKey: "descricao" },
+      { header: "Mês Prod.", dataKey: "mes" },
+      { header: "Valor Bruto", dataKey: "bruto" },
+      { header: "Impostos (%)", dataKey: "impostos" },
+      { header: "Custo/Pac.", dataKey: "custos" },
+      { header: "Taxas Cartão (%)", dataKey: "taxas" },
+      { header: "Valor Líquido", dataKey: "liquido" },
+      { header: "Rep. Clínica", dataKey: "clinica" },
+      { header: "Rep. Médico", dataKey: "medico" },
+    ];
+
+    const linhas = Array.from(tbody.querySelectorAll("tr")).map((tr) => {
+      const tds = tr.querySelectorAll("td");
+      const cel = (i) =>
+        tds[i]?.querySelector(".celula-valor")?.textContent.trim() || "";
+      return {
+        descricao: cel(0),
+        mes: cel(1),
+        bruto: cel(2),
+        impostos: cel(3),
+        custos: cel(4),
+        taxas: cel(5),
+        liquido: cel(6),
+        clinica: cel(7),
+        medico: cel(8),
+      };
+    });
+
+    // Totais do rodapé
+    const tfootCels = document.querySelectorAll(
+      "#rodape-tabela-repasse .totalizadores td .celula-valor",
+    );
+    const totaisRow =
+      tfootCels.length >= 7
+        ? {
+            descricao: "TOTAL",
+            mes: "",
+            bruto: tfootCels[0]?.textContent.trim() || "",
+            impostos: "—",
+            custos: tfootCels[1]?.textContent.trim() || "",
+            taxas: "—",
+            liquido: tfootCels[2]?.textContent.trim() || "",
+            clinica: tfootCels[3]?.textContent.trim() || "",
+            medico: tfootCels[4]?.textContent.trim() || "",
+          }
+        : null;
+
+    doc.autoTable({
+      columns: colunas,
+      body: linhas,
+      foot: totaisRow ? [Object.values(totaisRow)] : [],
+      startY: yCard + cardH + 6,
+      margin: { left: 14, right: 14 },
+      styles: {
+        fontSize: 7.5,
+        cellPadding: 2.5,
+        valign: "middle",
+        overflow: "ellipsize",
+      },
+      headStyles: {
+        fillColor: corPrimaria,
+        textColor: 255,
+        fontStyle: "bold",
+        halign: "center",
+      },
+      footStyles: {
+        fillColor: [241, 245, 249],
+        textColor: [30, 30, 30],
+        fontStyle: "bold",
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
+      },
+      columnStyles: {
+        descricao: { cellWidth: 55 },
+        mes: { cellWidth: 20, halign: "center" },
+        bruto: { cellWidth: 26, halign: "right" },
+        impostos: { cellWidth: 22, halign: "right" },
+        custos: { cellWidth: 24, halign: "right" },
+        taxas: { cellWidth: 26, halign: "right" },
+        liquido: { cellWidth: 26, halign: "right" },
+        clinica: { cellWidth: 26, halign: "right" },
+        medico: { cellWidth: 26, halign: "right" },
+      },
+      didParseCell(data) {
+        // Destaque linha de totais no footer
+        if (data.section === "foot") {
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
+
+    // ── Rodapé da página ───────────────────────────────────────
+    const pageH = doc.internal.pageSize.getHeight();
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(...corCinza);
+    doc.text("Regras de repasse: Clínica 40%  ·  Médico 60%", 14, pageH - 6);
+    doc.text(`Página 1 de 1  ·  ${dataGeracao}`, 283, pageH - 6, {
+      align: "right",
+    });
+
+    // ── Download ───────────────────────────────────────────────
+    const nomeArquivo = `repasse_${nomeMedico.replace(/\s+/g, "_").toLowerCase()}_${mesAnoAtivo}.pdf`;
+    doc.save(nomeArquivo);
+
+    Ui.mostrarToast("PDF gerado com sucesso!", "sucesso");
+  }
+
+  /* ============================================================
      UTILITÁRIOS
      ============================================================ */
 
@@ -1500,6 +1712,7 @@ window.Repasses = (() => {
     sincronizarValoresConvenio,
     aoClicarCarregar,
     executarMigracaoPercentuais,
+    gerarPDF,
   };
 })();
 
