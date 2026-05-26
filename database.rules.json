@@ -97,6 +97,32 @@
           ".write": "auth != null"
         }
       }
+    },
+    "clinica": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "entradas": {
+        "$entradaId": {
+          "mesReferencia": {
+            ".validate": "newData.isString() || !newData.exists()"
+          },
+          "valorBruto": {
+            ".validate": "newData.isNumber() || !newData.exists()"
+          },
+          "impostos": {
+            ".validate": "newData.isNumber() || !newData.exists()"
+          },
+          "valorLiquidado": {
+            ".validate": "newData.isNumber() || !newData.exists()"
+          },
+          "criadoEm": {
+            ".validate": "newData.isNumber() || !newData.exists()"
+          },
+          "atualizadoEm": {
+            ".validate": "newData.isNumber() || !newData.exists()"
+          }
+        }
+      }
     }
   }
 }

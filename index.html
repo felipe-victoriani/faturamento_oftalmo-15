@@ -1,4 +1,4 @@
-<!doctype html>
+firebase deploy --only database<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
@@ -793,6 +793,7 @@
 
         <!-- Área da tabela de repasse -->
         <section
+          id="area-tabela-medico"
           class="area-tabela"
           aria-label="Tabela de repasse do médico selecionado"
         >
@@ -921,6 +922,64 @@
                 </svg>
               </span>
               Exportar PDF
+            </button>
+          </div>
+        </section>
+
+        <!-- Área inline do perfil da Clínica Oftalmo 15 -->
+        <section
+          id="area-tabela-clinica"
+          class="area-tabela"
+          aria-label="Perfil da Clínica Oftalmo 15"
+          hidden
+        >
+          <div
+            class="tabela-wrapper"
+            role="region"
+            aria-label="Tabela da clínica"
+            tabindex="0"
+          >
+            <table class="tabela-repasse">
+              <caption class="tabela-repasse__caption">
+                Clínica Oftalmo 15 —
+                <time id="caption-mes-clinica" datetime=""></time>
+              </caption>
+              <thead class="tabela-repasse__cabecalho">
+                <tr class="cabecalho-colunas">
+                  <th scope="col">Mês de Prod.</th>
+                  <th scope="col">Valor Bruto</th>
+                  <th scope="col">Imposto %</th>
+                  <th scope="col">Valor Liquidado</th>
+                  <th scope="col"><span class="sr-only">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody id="corpo-tabela-clinica">
+                <!-- Preenchido por repasses.js -->
+              </tbody>
+              <tfoot id="rodape-tabela-clinica" class="tabela-repasse__rodape">
+                <!-- Totalizadores gerados por repasses.js -->
+              </tfoot>
+            </table>
+          </div>
+
+          <div class="area-tabela__acoes">
+            <button type="button" id="btn-nova-entrada-clinica" class="btn-secundario">
+              <span aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </span>
+              Adicionar entrada
             </button>
           </div>
         </section>

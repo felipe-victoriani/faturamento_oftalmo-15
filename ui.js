@@ -436,6 +436,51 @@ window.Ui = (() => {
     );
   }
 
+  /**
+   * Renderiza os cards de resumo do perfil da Clínica Oftalmo 15.
+   * @param {{ mesTexto: string, totalBruto: number, impostoPct: number, totalLiquidado: number }} dados
+   */
+  function renderizarCardsClinica(dados) {
+    const container = document.querySelector(".repasses-cards");
+    if (!container) return;
+
+    const icoCalendario = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+
+    const cards = [
+      {
+        titulo: "Valor Bruto",
+        valor: formatarBRL(dados.totalBruto || 0),
+        descricao: "Soma dos valores brutos",
+        icone: Icones.graficoBarra,
+        classe: "card-resumo--producao",
+      },
+      {
+        titulo: "Valor Liquidado",
+        valor: formatarBRL(dados.totalLiquidado || 0),
+        descricao: "Soma dos valores liquidados",
+        icone: Icones.dinheiro,
+        classe: "card-resumo--financeiro",
+      },
+    ];
+
+    container.innerHTML = cards
+      .map(
+        (card) => `
+      <article class="card-resumo ${card.classe}">
+        <header class="card-resumo__cabecalho">
+          <h3 class="card-resumo__titulo">${card.titulo}</h3>
+          <div class="card-resumo__icone">
+            ${card.icone}
+          </div>
+        </header>
+        <p class="card-resumo__valor">${card.valor}</p>
+        <p class="card-resumo__descricao">${card.descricao}</p>
+      </article>
+    `,
+      )
+      .join("");
+  }
+
   /* ============================================================
      RENDERIZAÇÃO DA TABELA
      ============================================================ */
@@ -1043,6 +1088,7 @@ window.Ui = (() => {
     renderizarAbas,
     renderizarCards,
     renderizarCardsRepasse,
+    renderizarCardsClinica,
     renderizarTabela,
     renderizarTotalizadores,
     abrirModalEdicao,

@@ -720,6 +720,55 @@ window.Db = (() => {
   }
 
   /* ============================================================
+     PERFIL DA CLÍNICA
+     ============================================================ */
+
+  /**
+   * Carrega todas as entradas do perfil da clínica (leitura única).
+   * @returns {Promise<Object>}
+   */
+  async function obterEntradasClinica() {
+    const snap = await firebaseDb.ref("clinica/entradas").once("value");
+    return snap.val() || {};
+  }
+
+  /**
+   * Adiciona nova entrada no perfil da clínica.
+   * @param {Object} dados
+   * @returns {Promise<string>} ID gerado
+   */
+  async function adicionarEntradaClinica(dados) {
+    const novoRef = firebaseDb.ref("clinica/entradas").push();
+    await novoRef.set({
+      ...dados,
+      criadoEm: Date.now(),
+      atualizadoEm: Date.now(),
+    });
+    return novoRef.key;
+  }
+
+  /**
+   * Atualiza uma entrada existente do perfil da clínica.
+   * @param {string} id
+   * @param {Object} dados
+   * @returns {Promise<void>}
+   */
+  function atualizarEntradaClinica(id, dados) {
+    return firebaseDb
+      .ref(`clinica/entradas/${id}`)
+      .update({ ...dados, atualizadoEm: Date.now() });
+  }
+
+  /**
+   * Exclui uma entrada do perfil da clínica.
+   * @param {string} id
+   * @returns {Promise<void>}
+   */
+  function excluirEntradaClinica(id) {
+    return firebaseDb.ref(`clinica/entradas/${id}`).remove();
+  }
+
+  /* ============================================================
      EXPORTAÇÃO DO MÓDULO
      ============================================================ */
 
@@ -751,5 +800,10 @@ window.Db = (() => {
     excluirAvulsoRepasse,
     salvarReembolsoClinica,
     migrarPercentuaisRepasse,
+    // Clínica
+    obterEntradasClinica,
+    adicionarEntradaClinica,
+    atualizarEntradaClinica,
+    excluirEntradaClinica,
   };
 })();

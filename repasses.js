@@ -34,6 +34,9 @@ window.Repasses = (() => {
   /** @type {boolean} Flag para evitar inicialização múltipla */
   let jaInicializado = false;
 
+  /** @type {string|null} Mês de referência ativo no modal do perfil da clínica */
+  let mesAtivoClinica = null;
+
   /* ============================================================
      INICIALIZAÇÃO
      ============================================================ */
@@ -182,6 +185,11 @@ window.Repasses = (() => {
           fecharModalGerenciarMedicos();
         }
       });
+
+    // Perfil da Clínica Oftalmo 15 (inline)
+    document
+      .getElementById("btn-nova-entrada-clinica")
+      .addEventListener("click", adicionarEntradaVaziaClinica);
   }
 
   /**
@@ -205,6 +213,12 @@ window.Repasses = (() => {
     while (select.options.length > 1) {
       select.remove(1);
     }
+
+    // Opção fixa da Clínica Oftalmo 15
+    const optClinica = document.createElement("option");
+    optClinica.value = "__clinica__";
+    optClinica.textContent = "— Clínica Oftalmo 15 —";
+    select.appendChild(optClinica);
 
     if (!medicos || Object.keys(medicos).length === 0) {
       console.log("⚠️ Nenhum médico encontrado, adicionando médicos padrão...");
@@ -293,10 +307,22 @@ window.Repasses = (() => {
     const mesAno = document.getElementById("select-mes-repasse").value;
 
     if (!medicoId) {
-      Ui.mostrarToast("Selecione um médico", "aviso");
+      Ui.mostrarToast("Selecione um médico ou a clínica", "aviso");
       return;
     }
 
+    const areaMedico = document.getElementById("area-tabela-medico");
+    const areaClinica = document.getElementById("area-tabela-clinica");
+
+    if (medicoId === "__clinica__") {
+      areaMedico.hidden = true;
+      areaClinica.hidden = false;
+      carregarClinica(mesAno);
+      return;
+    }
+
+    areaMedico.hidden = false;
+    areaClinica.hidden = true;
     carregarRepasse(medicoId, mesAno);
   }
 
@@ -1671,6 +1697,319 @@ window.Repasses = (() => {
         }
       });
     });
+  }
+
+  /* ============================================================
+     PERFIL DA CLÍNICA
+     ============================================================ */
+
+  /**
+   * Carrega o perfil da Clínica Oftalmo 15 na seção inline.
+   * @param {string} mesAno - Formato "YYYY-MM"
+   */
+  async function carregarClinica(mesAno) {
+    mesAtivoClinica = mesAno;
+
+    // Atualiza o caption da tabela
+    const mesData = new Date(mesAno + "-01");
+    const mesTexto = mesData.toLocaleDateString("pt-BR", {
+      month: "long",
+      year: "numeric",
+    });
+    const mesTextoCap = mesTexto.charAt(0).toUpperCase() + mesTexto.slice(1);
+    const captionEl = document.getElementById("caption-mes-clinica");
+    if (captionEl) {
+      captionEl.textContent = mesTextoCap;
+      captionEl.setAttribute("datetime", mesAno);
+    }
+
+    // Carrega entradas
+    const tbody = document.getElementById("corpo-tabela-clinica");
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:1.25rem;color:var(--texto-secundario);">Carregando…</td></tr>`;
+
+    try {
+      const todasEntradas = await Db.obterEntradasClinica();
+
+      // Filtra apenas as entradas do mês selecionado
+      const entradas = Object.fromEntries(
+        Object.entries(todasEntradas).filter(
+          ([, e]) => (e.mesReferencia || "") === mesAno,
+        ),
+      );
+
+      const vals = Object.values(entradas);
+      const totalBruto = vals.reduce((s, e) => s + (e.valorBruto || 0), 0);
+      const totalLiquidado = vals.reduce(
+        (s, e) => s + (e.valorLiquidado || 0),
+        0,
+      );
+      const impostoPct =
+        totalBruto > 0 ? ((totalBruto - totalLiquidado) / totalBruto) * 100 : 0;
+      Ui.renderizarCardsClinica({
+        mesTexto: mesTextoCap,
+        totalBruto,
+        impostoPct,
+        totalLiquidado,
+      });
+      renderizarTabelaClinica(entradas);
+    } catch (erro) {
+      console.error("Erro ao carregar entradas da clínica:", erro);
+      Ui.mostrarToast("Erro ao carregar dados da clínica", "erro");
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:1.25rem;color:var(--erro);">Erro ao carregar dados</td></tr>`;
+    }
+  }
+
+  /**
+   * Renderiza todas as linhas da tabela do perfil da clínica.
+   * @param {Object} entradas - Snapshot de clinica/entradas
+   */
+  function renderizarTabelaClinica(entradas) {
+    const tbody = document.getElementById("corpo-tabela-clinica");
+    tbody.innerHTML = "";
+
+    const ids = Object.keys(entradas);
+    if (ids.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--texto-secundario);">Nenhuma entrada cadastrada. Clique em &quot;Adicionar entrada&quot; para começar.</td></tr>`;
+      document.getElementById("rodape-tabela-clinica").innerHTML = "";
+      return;
+    }
+
+    ids.forEach((id) => adicionarLinhaClinica(tbody, id, entradas[id]));
+    atualizarTotalizadoresClinicaDOM();
+  }
+
+  /**
+   * Lê os valores atuais do DOM e atualiza a linha de totais no tfoot da clínica.
+   */
+  function atualizarTotalizadoresClinicaDOM() {
+    const tfoot = document.getElementById("rodape-tabela-clinica");
+    if (!tfoot) return;
+
+    let totalBruto = 0;
+    let totalLiquidado = 0;
+    document.querySelectorAll("#corpo-tabela-clinica tr").forEach((tr) => {
+      const brutoEl = tr.querySelector('[data-campo="valorBruto"]');
+      const liquidadoEl = tr.querySelector('[data-campo="valorLiquidado"]');
+      if (brutoEl) totalBruto += parseMoeda(brutoEl.textContent);
+      if (liquidadoEl) totalLiquidado += parseMoeda(liquidadoEl.textContent);
+    });
+
+    tfoot.innerHTML = `
+      <tr class="totalizadores">
+        <th scope="row">TOTAIS</th>
+        <td class="totalizador-valor"><span class="celula-label">Valor Bruto</span><span class="celula-valor">${Ui.formatarBRL(totalBruto)}</span></td>
+        <td class="totalizador-valor"><span class="celula-label">Imposto %</span><span class="celula-valor">—</span></td>
+        <td class="totalizador-valor"><span class="celula-label">Valor Liquidado</span><span class="celula-valor">${Ui.formatarBRL(totalLiquidado)}</span></td>
+        <td></td>
+      </tr>
+    `;
+
+    // Atualiza os cards com os totais atuais
+    if (mesAtivoClinica) {
+      const mesData = new Date(mesAtivoClinica + "-01");
+      const mesTexto = mesData.toLocaleDateString("pt-BR", {
+        month: "long",
+        year: "numeric",
+      });
+      const mesTextoCap = mesTexto.charAt(0).toUpperCase() + mesTexto.slice(1);
+      const impostoPct =
+        totalBruto > 0 ? ((totalBruto - totalLiquidado) / totalBruto) * 100 : 0;
+      Ui.renderizarCardsClinica({
+        mesTexto: mesTextoCap,
+        totalBruto,
+        impostoPct,
+        totalLiquidado,
+      });
+    }
+  }
+
+  /**
+   * Adiciona uma linha editável na tabela do perfil da clínica.
+   * @param {HTMLElement} tbody
+   * @param {string} id - ID do documento no Firebase
+   * @param {Object} dados
+   */
+  function adicionarLinhaClinica(tbody, id, dados) {
+    const tr = document.createElement("tr");
+    tr.dataset.entradaId = id;
+
+    const mesRef = dados.mesReferencia || mesAtivoClinica || "";
+    tr.dataset.mesReferencia = mesRef; // preservado para filtragem, não editável
+    const mesProducao = dados.mesProducao || mesRef;
+    const valorBruto = dados.valorBruto || 0;
+    const impostos = dados.impostos || 0;
+    const valorLiquidado = dados.valorLiquidado || 0;
+
+    tr.innerHTML = `
+      <td>
+        <span class="celula-label">Mês de Prod.</span>
+        <span class="celula-editavel celula-valor" data-campo="mesProducao" contenteditable="true" title="Formato: AAAA-MM (ex: 2026-04)">${mesProducao}</span>
+      </td>
+      <td>
+        <span class="celula-label">Valor Bruto</span>
+        <span class="celula-editavel celula-valor" data-campo="valorBruto" contenteditable="true">${Ui.formatarBRL(valorBruto)}</span>
+      </td>
+      <td>
+        <span class="celula-label">Imposto %</span>
+        <span class="celula-editavel celula-valor" data-campo="impostos" contenteditable="true">${impostos.toFixed(2)}%</span>
+      </td>
+      <td>
+        <span class="celula-label">Valor Liquidado</span>
+        <span class="celula-editavel celula-valor" data-campo="valorLiquidado" contenteditable="true">${Ui.formatarBRL(valorLiquidado)}</span>
+      </td>
+      <td class="celula-acoes">
+        <button type="button" class="btn-icone btn-excluir-entrada-clinica" title="Excluir" aria-label="Excluir entrada">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </td>
+    `;
+
+    // Células contenteditable
+    tr.querySelectorAll(".celula-editavel").forEach((celula) => {
+      celula.addEventListener("blur", () =>
+        aoEditarCelulaClinica(id, celula, tr),
+      );
+      celula.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          e.target.blur();
+        }
+      });
+    });
+
+    // Botão excluir
+    tr.querySelector(".btn-excluir-entrada-clinica").addEventListener(
+      "click",
+      () => {
+        if (!confirm("Excluir esta entrada? Esta ação não pode ser desfeita."))
+          return;
+        Db.excluirEntradaClinica(id)
+          .then(() => {
+            tr.remove();
+            atualizarTotalizadoresClinicaDOM();
+            Ui.mostrarToast("Entrada excluída", "sucesso");
+          })
+          .catch((err) => Ui.mostrarToast("Erro: " + err.message, "erro"));
+      },
+    );
+
+    tbody.appendChild(tr);
+  }
+
+  /**
+   * Adiciona uma nova linha vazia na tabela da clínica.
+   */
+  async function adicionarEntradaVaziaClinica() {
+    const dados = {
+      mesReferencia: mesAtivoClinica || new Date().toISOString().slice(0, 7),
+      valorBruto: 0,
+      impostos: 0,
+      valorLiquidado: 0,
+    };
+
+    try {
+      const id = await Db.adicionarEntradaClinica(dados);
+      const tbody = document.getElementById("corpo-tabela-clinica");
+      // Remove mensagem de "nenhuma entrada" se existir
+      if (tbody.querySelector("td[colspan]")) tbody.innerHTML = "";
+      adicionarLinhaClinica(tbody, id, dados);
+      atualizarTotalizadoresClinicaDOM();
+      Ui.mostrarToast("Nova entrada adicionada", "sucesso");
+    } catch (erro) {
+      Ui.mostrarToast("Erro ao adicionar entrada: " + erro.message, "erro");
+    }
+  }
+
+  /**
+   * Processa blur em célula editável da tabela da clínica.
+   * @param {string} id
+   * @param {HTMLElement} celula
+   * @param {HTMLTableRowElement} tr
+   */
+  function aoEditarCelulaClinica(id, celula, tr) {
+    const campo = celula.dataset.campo;
+    const texto = celula.textContent.trim();
+
+    // mesProducao é campo de controle (string YYYY-MM), independente do filtro
+    if (campo === "mesProducao") {
+      if (!/^\d{4}-\d{2}$/.test(texto)) {
+        Ui.mostrarToast("Formato inválido. Use AAAA-MM (ex: 2026-04)", "aviso");
+        celula.textContent = mesAtivoClinica || "";
+        return;
+      }
+      salvarCelulaClinica(id, campo, texto, tr);
+      return;
+    }
+
+    let valor;
+    if (campo === "impostos") {
+      valor = parseFloat(texto.replace(/[%\s]/g, "").replace(",", ".")) || 0;
+    } else {
+      valor = parseMoeda(texto);
+    }
+
+    salvarCelulaClinica(id, campo, valor, tr);
+  }
+
+  /**
+   * Recalcula valorLiquidado, atualiza DOM e salva no Firebase.
+   * @param {string} id
+   * @param {string} campo
+   * @param {*} valor
+   * @param {HTMLTableRowElement} tr
+   */
+  function salvarCelulaClinica(id, campo, valor, tr) {
+    const brutoEl = tr.querySelector('[data-campo="valorBruto"]');
+    const impostosEl = tr.querySelector('[data-campo="impostos"]');
+    const liquidadoEl = tr.querySelector('[data-campo="valorLiquidado"]');
+
+    // mesProducao é campo de controle independente — salva só ele e retorna
+    if (campo === "mesProducao") {
+      Db.atualizarEntradaClinica(id, { mesProducao: String(valor) })
+        .then(() => Ui.mostrarToast("Salvo", "sucesso"))
+        .catch((err) =>
+          Ui.mostrarToast("Erro ao salvar: " + err.message, "erro"),
+        );
+      return;
+    }
+
+    let valorBruto = parseMoeda(brutoEl.textContent);
+    let impostos =
+      parseFloat(
+        impostosEl.textContent.replace(/[%\s]/g, "").replace(",", "."),
+      ) || 0;
+
+    if (campo === "valorBruto") valorBruto = valor;
+    if (campo === "impostos") impostos = valor;
+
+    // Recalcula liquidado apenas quando bruto ou imposto mudar;
+    // se o próprio liquidado foi editado, usa o valor digitado diretamente.
+    const valorLiquidado =
+      campo === "valorLiquidado"
+        ? parseFloat(valor.toFixed(2))
+        : parseFloat((valorBruto - (valorBruto * impostos) / 100).toFixed(2));
+
+    // Atualiza DOM
+    if (campo === "valorBruto")
+      brutoEl.textContent = Ui.formatarBRL(valorBruto);
+    if (campo === "impostos")
+      impostosEl.textContent = impostos.toFixed(2) + "%";
+    liquidadoEl.textContent = Ui.formatarBRL(valorLiquidado);
+
+    // Salva no Firebase — mesReferencia nunca muda (vem do dataset)
+    Db.atualizarEntradaClinica(id, {
+      mesReferencia: tr.dataset.mesReferencia || mesAtivoClinica || "",
+      valorBruto,
+      impostos,
+      valorLiquidado,
+    })
+      .then(() => {
+        atualizarTotalizadoresClinicaDOM();
+        Ui.mostrarToast("Salvo", "sucesso");
+      })
+      .catch((err) =>
+        Ui.mostrarToast("Erro ao salvar: " + err.message, "erro"),
+      );
   }
 
   /* ============================================================
