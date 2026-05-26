@@ -542,7 +542,7 @@ window.Repasses = (() => {
 
       tr.innerHTML = `
         <td><span class="celula-label">Convênio</span><span class="celula-valor">${convenio.nome}</span></td>
-        <td><span class="celula-label">Mês Prod.</span><span class="celula-valor">${mesAnoAtivo}</span></td>
+        <td><span class="celula-label">Mês Prod.</span><span class="celula-editavel celula-valor" data-campo="mesProducao" contenteditable="true" title="Formato: AAAA-MM (ex: 2026-03)">${dadosConvenio.mesProducao || mesAnoAtivo}</span></td>
         <td><span class="celula-label">Valor Bruto</span><span class="celula-editavel celula-valor" data-campo="valorBruto" contenteditable="${editavel}">${Ui.formatarBRL(valorBruto)}</span></td>
         <td><span class="celula-label">Impostos</span><span class="celula-editavel celula-valor" data-campo="impostos" data-tipo="percentual" contenteditable="${editavel}">${impostos.toFixed(2)}%</span></td>
         <td><span class="celula-label">Custos/Pacotes</span><span class="celula-editavel celula-valor" data-campo="custosPacotes" contenteditable="${editavel}">${Ui.formatarBRL(custosPacotes)}</span></td>
@@ -642,7 +642,7 @@ window.Repasses = (() => {
 
       tr.innerHTML = `
         <td><span class="celula-label">Descrição</span><span class="celula-valor">${descricaoCompleta}${observacao ? ` (${observacao})` : ""}</span></td>
-        <td><span class="celula-label">Mês Prod.</span><span class="celula-valor">${mesAnoAtivo}</span></td>
+        <td><span class="celula-label">Mês Prod.</span><span class="celula-valor">${dados.mesProducao || mesAnoAtivo}</span></td>
         <td><span class="celula-label">Valor Bruto</span><span class="celula-valor">${Ui.formatarBRL(valorBruto)}</span></td>
         <td><span class="celula-label">Impostos</span><span class="celula-valor">${impostos.toFixed(2)}%</span></td>
         <td><span class="celula-label">Custos/Pacotes</span><span class="celula-valor">${Ui.formatarBRL(custosPacotes)}</span></td>
@@ -867,6 +867,22 @@ window.Repasses = (() => {
     console.log(
       `[Repasses] aoEditarCelulaConvenio - convenioId: ${convenioId}, campo: ${campo}, valor original: "${valor}"`,
     );
+
+    // Campo mesProducao é string (YYYY-MM), não numérico
+    if (campo === "mesProducao") {
+      if (!/^\d{4}-\d{2}$/.test(valor)) {
+        Ui.mostrarToast("Formato inválido. Use AAAA-MM (ex: 2026-03)", "aviso");
+        celula.textContent =
+          dadosAtivos.convenios?.[convenioId]?.mesProducao || mesAnoAtivo;
+        return;
+      }
+      Db.salvarConvenioRepasse(medicoAtivoId, mesAnoAtivo, convenioId, {
+        ...(dadosAtivos.convenios?.[convenioId] || {}),
+        mesProducao: valor,
+      });
+      Ui.mostrarToast("Mês de produção atualizado", "sucesso");
+      return;
+    }
 
     // Remove formatação de moeda/percentual
     valor = valor.replace(/[R$\s.%]/g, "").replace(",", ".");
@@ -1136,6 +1152,10 @@ window.Repasses = (() => {
     form.dataset.modo = "criar";
     delete form.dataset.avulsoId;
 
+    // Inicializa mês de produção com o mês ativo
+    const inputMesProdNovo = document.getElementById("avulso-mes-producao");
+    if (inputMesProdNovo) inputMesProdNovo.value = mesAnoAtivo || "";
+
     document.getElementById("modal-avulso-titulo").textContent =
       "Novo Lançamento Avulso";
     document.getElementById("grupo-obs-parcelas").hidden = true;
@@ -1160,6 +1180,8 @@ window.Repasses = (() => {
 
     // Preenche os campos
     document.getElementById("avulso-descricao").value = dados.descricao || "";
+    document.getElementById("avulso-mes-producao").value =
+      dados.mesProducao || mesAnoAtivo || "";
     document.getElementById("avulso-categoria").value =
       dados.categoria || "cirurgia_particular";
     document.getElementById("avulso-forma-pagamento").value =
@@ -1244,6 +1266,8 @@ window.Repasses = (() => {
 
     const dados = {
       descricao: document.getElementById("avulso-descricao").value.trim(),
+      mesProducao:
+        document.getElementById("avulso-mes-producao").value || mesAnoAtivo,
       categoria: document.getElementById("avulso-categoria").value,
       formaPagamento: document.getElementById("avulso-forma-pagamento").value,
       observacaoParcelas: document
