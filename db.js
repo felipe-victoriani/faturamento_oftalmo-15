@@ -769,6 +769,97 @@ window.Db = (() => {
   }
 
   /* ============================================================
+     STATUS DO REPASSE (pago / pendente)
+     Caminho: repasses/status/{medicoId}/{mesAno}
+     ============================================================ */
+
+  /**
+   * Ouve o status de pagamento de um médico/mês em tempo real.
+   * @param {string} medicoId
+   * @param {string} mesAno
+   * @param {Function} callback - recebe { pago: boolean } ou {}
+   * @returns {Function} para de ouvir
+   */
+  function ouvirStatusRepasse(medicoId, mesAno, callback) {
+    const ref = firebaseDb.ref(`repasses/status/${medicoId}/${mesAno}`);
+    const handler = (snap) => callback(snap.val() || {});
+    ref.on("value", handler);
+    return () => ref.off("value", handler);
+  }
+
+  /**
+   * Salva o status de pagamento de um médico/mês.
+   * @param {string} medicoId
+   * @param {string} mesAno
+   * @param {boolean} pago
+   */
+  function salvarStatusRepasse(medicoId, mesAno, pago) {
+    return firebaseDb
+      .ref(`repasses/status/${medicoId}/${mesAno}`)
+      .set({ pago, atualizadoEm: Date.now() });
+  }
+
+  /**
+   * Lê (uma vez) o repasse de um médico/mês — usado pelo histórico.
+   * @param {string} medicoId
+   * @param {string} mesAno
+   * @returns {Promise<Object>}
+   */
+  async function obterRepasseUmaVez(medicoId, mesAno) {
+    const snap = await firebaseDb
+      .ref(`repasses/lancamentos/${medicoId}/${mesAno}`)
+      .once("value");
+    return snap.val() || {};
+  }
+
+  /* ============================================================
+     ADIANTAMENTOS DO MÉDICO
+     Caminho: repasses/adiantamentos/{medicoId}/{mesAno}/{id}
+     ============================================================ */
+
+  /**
+   * Ouve em tempo real os adiantamentos de um médico em um mês.
+   * @param {string} medicoId
+   * @param {string} mesAno - formato "YYYY-MM"
+   * @param {Function} callback - recebe snapshot (objeto ou null)
+   * @returns {Function} função para parar de ouvir
+   */
+  function ouvirAdiantamentos(medicoId, mesAno, callback) {
+    const ref = firebaseDb.ref(`repasses/adiantamentos/${medicoId}/${mesAno}`);
+    const handler = (snap) => callback(snap.val() || {});
+    ref.on("value", handler);
+    return () => ref.off("value", handler);
+  }
+
+  /**
+   * Adiciona um adiantamento para o médico/mês.
+   * @param {string} medicoId
+   * @param {string} mesAno
+   * @param {{ descricao: string, valor: number }} dados
+   * @returns {Promise<string>} ID gerado
+   */
+  async function adicionarAdiantamento(medicoId, mesAno, dados) {
+    const novoRef = firebaseDb
+      .ref(`repasses/adiantamentos/${medicoId}/${mesAno}`)
+      .push();
+    await novoRef.set({ ...dados, criadoEm: Date.now() });
+    return novoRef.key;
+  }
+
+  /**
+   * Exclui um adiantamento pelo ID.
+   * @param {string} medicoId
+   * @param {string} mesAno
+   * @param {string} id
+   * @returns {Promise<void>}
+   */
+  function excluirAdiantamento(medicoId, mesAno, id) {
+    return firebaseDb
+      .ref(`repasses/adiantamentos/${medicoId}/${mesAno}/${id}`)
+      .remove();
+  }
+
+  /* ============================================================
      EXPORTAÇÃO DO MÓDULO
      ============================================================ */
 
@@ -805,5 +896,13 @@ window.Db = (() => {
     adicionarEntradaClinica,
     atualizarEntradaClinica,
     excluirEntradaClinica,
+    // Adiantamentos
+    ouvirAdiantamentos,
+    adicionarAdiantamento,
+    excluirAdiantamento,
+    // Status do repasse
+    ouvirStatusRepasse,
+    salvarStatusRepasse,
+    obterRepasseUmaVez,
   };
 })();

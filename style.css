@@ -945,6 +945,359 @@ input[type="number"] {
   color: var(--pendente);
 }
 
+/* Card clicável do médico */
+.card-resumo--medico {
+  cursor: pointer;
+  border: 2px solid var(--primario, #3b82f6);
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+
+.card-resumo--medico:hover,
+.card-resumo--medico:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
+  outline: none;
+}
+
+.card-resumo--medico .card-resumo__icone {
+  background-color: #eff6ff;
+  color: var(--primario, #3b82f6);
+}
+
+.card-resumo__valor--medico {
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Card negativo (saldo devedor) */
+.card-resumo--negativo {
+  border-left: 4px solid #ef4444;
+}
+
+.card-resumo--negativo .card-resumo__valor {
+  color: #ef4444;
+}
+
+/* Card de adiantamentos */
+.card-resumo--adiantamento .card-resumo__valor {
+  color: #f59e0b;
+}
+
+/* ============================================================
+   PÁGINA EXTRATO DO MÉDICO (overlay full-screen)
+   ============================================================ */
+
+.extrato-pagina {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--bg, #f1f5f9);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  animation: fadeSlideUp 0.25s ease-out;
+}
+
+.extrato-pagina--oculta {
+  display: none;
+}
+
+/* Header da sub-página — mesmo visual do header-principal */
+.extrato-pagina__header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 2rem;
+  background: var(--bg-surface, #fff);
+  border-bottom: 1px solid var(--borda, #e5e7eb);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.extrato-pagina__btn-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: 1px solid var(--borda, #e5e7eb);
+  border-radius: var(--raio, 8px);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--texto-primario, #111827);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.extrato-pagina__btn-voltar svg {
+  width: 16px;
+  height: 16px;
+}
+
+.extrato-pagina__btn-voltar:hover {
+  background: var(--bg-hover, #f3f4f6);
+  border-color: var(--primario, #3b82f6);
+}
+
+.extrato-pagina__titulo {
+  flex: 1;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--texto-primario, #111827);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.extrato-pagina__mes {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--texto-secundario, #6b7280);
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: var(--bg-hover, #f3f4f6);
+  border-radius: var(--raio, 8px);
+  padding: 0.25rem 0.6rem;
+}
+
+/* Ações do header (PDF, WhatsApp) */
+.extrato-pagina__acoes {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.extrato-pagina__acao {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.extrato-pagina__acao svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+/* Conteúdo — mesma largura/padding das views */
+.extrato-pagina__conteudo {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1800px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.extrato-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+/* Histórico de meses */
+.extrato-historico {
+  background: var(--bg-surface, #fff);
+  border: 1px solid var(--borda, #e5e7eb);
+  border-radius: var(--raio-lg, 12px);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+}
+
+.extrato-historico__conteudo {
+  margin-top: 0.5rem;
+}
+
+.historico-tabela {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--borda, #e5e7eb);
+  border-radius: var(--raio, 8px);
+  overflow: hidden;
+}
+
+.historico-tabela__head {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.5fr 1.5fr;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: var(--bg-hover, #f3f4f6);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--texto-secundario, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.historico-tabela__row {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.5fr 1.5fr;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.65rem 1rem;
+  border-top: 1px solid var(--borda, #e5e7eb);
+  font-size: 0.85rem;
+  transition: background 0.1s;
+}
+
+.historico-tabela__row:hover {
+  background: var(--bg-hover, #f9fafb);
+}
+
+.historico-tabela__mes {
+  font-weight: 500;
+  color: var(--texto-primario, #111827);
+}
+
+.historico-tabela__valor {
+  color: var(--texto-primario, #111827);
+  font-weight: 500;
+}
+
+.historico-tabela__adiant {
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.historico-tabela__saldo {
+  font-weight: 700;
+  color: #10b981;
+}
+
+.historico-tabela__saldo--negativo {
+  color: #ef4444;
+}
+
+.extrato-adiantamentos {
+  background: var(--bg-surface, #fff);
+  border: 1px solid var(--borda, #e5e7eb);
+  border-radius: var(--raio-lg, 12px);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.extrato-adiantamentos__cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.extrato-adiantamentos__titulo {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--texto-primario, #111827);
+  margin: 0;
+}
+
+.btn-secundario--sm {
+  font-size: 0.78rem;
+  padding: 0.3rem 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-secundario--sm svg {
+  width: 14px;
+  height: 14px;
+}
+
+.extrato-adiantamentos__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.extrato-adiantamentos__vazio {
+  font-size: 0.85rem;
+  color: var(--texto-secundario, #6b7280);
+  text-align: center;
+  padding: 1rem 0;
+  margin: 0;
+}
+
+.adiantamento-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-hover, #f9fafb);
+  border-radius: var(--raio, 8px);
+  border: 1px solid var(--borda, #e5e7eb);
+}
+
+.adiantamento-item__info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.adiantamento-item__descricao {
+  font-size: 0.85rem;
+  color: var(--texto-primario, #111827);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adiantamento-item__valor {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #f59e0b;
+  white-space: nowrap;
+}
+
+.btn-excluir-adiantamento {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--texto-secundario, #6b7280);
+  padding: 4px;
+  border-radius: var(--raio, 8px);
+  transition:
+    color 0.15s,
+    background 0.15s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.btn-excluir-adiantamento svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-excluir-adiantamento:hover {
+  color: #ef4444;
+  background: #fee2e2;
+}
+
+/* ============================================================
+   MODAL NOVO ADIANTAMENTO
+   ============================================================ */
+
+.modal--adiantamento {
+  width: min(420px, 95vw);
+}
+
 /* ============================================================
    8. COMPONENTE: Tabela de Faturamento
    ============================================================ */

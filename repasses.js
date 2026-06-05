@@ -190,6 +190,9 @@ window.Repasses = (() => {
     document
       .getElementById("btn-nova-entrada-clinica")
       .addEventListener("click", adicionarEntradaVaziaClinica);
+
+    // Extrato do médico e adiantamentos
+    registrarEventosExtrato();
   }
 
   /**
@@ -452,7 +455,7 @@ window.Repasses = (() => {
         console.log(
           "⚠️ renderizarRepasse - NENHUMA LINHA RENDERIZADA! Tabela vazia.",
         );
-        // Renderiza cards zerados
+        // Renderiza cards zerados e remove card do médico
         Ui.renderizarCardsRepasse({
           totalProducao: 0,
           totalRecebido: 0,
@@ -460,6 +463,7 @@ window.Repasses = (() => {
           totalRepasseClinica: 0,
           reembolsoClinica: 0,
         });
+        Ui.removerCardMedico();
       } else {
         renderizarTotalizadores(linhas);
         // Atualiza cards
@@ -874,6 +878,12 @@ window.Repasses = (() => {
       totalRepasseClinica,
       reembolsoClinica: reembolsoTotal,
     });
+
+    // Renderiza card clicável do médico para abrir o extrato
+    const nomeMedico = _obterNomeMedicoAtivo();
+    if (nomeMedico && nomeMedico !== "—") {
+      Ui.renderizarCardMedico(nomeMedico, abrirModalExtrato);
+    }
   }
 
   /* ============================================================
@@ -2063,6 +2073,572 @@ window.Repasses = (() => {
       console.error("❌ Erro ao executar migração:", erro);
       Ui.mostrarToast("Erro ao migrar percentuais: " + erro.message, "erro");
     }
+  }
+
+  /* ============================================================
+     EXTRATO DO MÉDICO — ADIANTAMENTOS
+     ============================================================ */
+
+  /** @type {Function|null} Para de ouvir adiantamentos no Firebase */
+  let pararOuvirAdiantamentos = null;
+
+  /** @type {Object} Cache dos adiantamentos ativos */
+  let adiantamentosAtivos = {};
+
+  /** @type {number} Cache do totalRecebido (repasse médico) para o extrato */
+  let totalRecebidoExtrato = 0;
+
+  /** @type {number} Cache do totalValorLiquido para o extrato */
+  let totalLiquidoExtrato = 0;
+
+  /**
+   * Abre o modal de extrato do médico.
+   * Registra listener de adiantamentos em tempo real.
+   */
+  function abrirModalExtrato() {
+    if (!medicoAtivoId || !mesAnoAtivo) return;
+
+    const pagina = document.getElementById("view-extrato-medico");
+
+    // Preenche nome do médico e mês no header da página
+    const nomeMedico = _obterNomeMedicoAtivo();
+    const elNome = document.getElementById("extrato-nome-medico");
+    const elMes = document.getElementById("extrato-mes-ref");
+    if (elNome) elNome.textContent = nomeMedico;
+    if (elMes) {
+      const [ano, mes] = mesAnoAtivo.split("-");
+      const nomeMes = new Date(ano, mes - 1).toLocaleString("pt-BR", {
+        month: "long",
+        year: "numeric",
+      });
+      elMes.textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+    }
+
+    // Captura os totais atuais dos cards
+    totalRecebidoExtrato = _lerValorCard("Total Recebido") || 0;
+    totalLiquidoExtrato = _lerValorCard("Valor Líquido") || 0;
+
+    // Inicia listener em tempo real para adiantamentos
+    if (pararOuvirAdiantamentos) pararOuvirAdiantamentos();
+    pararOuvirAdiantamentos = Db.ouvirAdiantamentos(
+      medicoAtivoId,
+      mesAnoAtivo,
+      (dados) => {
+        adiantamentosAtivos = dados || {};
+        _atualizarExtratoUI();
+      },
+    );
+
+    // Carrega histórico dos últimos 6 meses
+    _carregarHistorico();
+
+    pagina.classList.remove("extrato-pagina--oculta");
+    pagina.scrollTop = 0;
+  }
+
+  /**
+   * Fecha a página de extrato e para de ouvir adiantamentos.
+   */
+  function fecharModalExtrato() {
+    const pagina = document.getElementById("view-extrato-medico");
+    if (pagina) pagina.classList.add("extrato-pagina--oculta");
+    if (pararOuvirAdiantamentos) {
+      pararOuvirAdiantamentos();
+      pararOuvirAdiantamentos = null;
+    }
+    adiantamentosAtivos = {};
+  }
+
+  /**
+   * Lê o valor numérico de um card de resumo pelo título.
+   * @param {string} titulo
+   * @returns {number}
+   */
+  function _lerValorCard(titulo) {
+    const cards = document.querySelectorAll(".card-resumo");
+    for (const card of cards) {
+      const h3 = card.querySelector(".card-resumo__titulo");
+      if (h3 && h3.textContent.trim() === titulo) {
+        const valorEl = card.querySelector(".card-resumo__valor");
+        if (valorEl) return parseMoeda(valorEl.textContent);
+      }
+    }
+    return 0;
+  }
+
+  /**
+   * Recalcula e re-renderiza os cards e a lista de adiantamentos no modal.
+   */
+  function _atualizarExtratoUI() {
+    const nomeMedico = _obterNomeMedicoAtivo();
+    const totalAdiantamentos = Object.values(adiantamentosAtivos).reduce(
+      (acc, a) => acc + (parseFloat(a.valor) || 0),
+      0,
+    );
+
+    Ui.renderizarCardsExtrato({
+      nomeMedico,
+      valorLiquido: totalLiquidoExtrato,
+      repasseMedico: totalRecebidoExtrato,
+      totalAdiantamentos,
+    });
+
+    _renderizarListaAdiantamentos();
+  }
+
+  /**
+   * Retorna o nome do médico ativo a partir do <select>.
+   * @returns {string}
+   */
+  function _obterNomeMedicoAtivo() {
+    const select = document.getElementById("select-medico");
+    if (!select) return "—";
+    const opt = select.options[select.selectedIndex];
+    return opt ? opt.text : "—";
+  }
+
+  /**
+   * Renderiza a lista de adiantamentos dentro do modal de extrato.
+   */
+  function _renderizarListaAdiantamentos() {
+    const lista = document.getElementById("lista-adiantamentos");
+    if (!lista) return;
+
+    const entradas = Object.entries(adiantamentosAtivos);
+    if (entradas.length === 0) {
+      lista.innerHTML =
+        '<p class="extrato-adiantamentos__vazio">Nenhum adiantamento lançado neste período.</p>';
+      return;
+    }
+
+    lista.innerHTML = entradas
+      .sort((a, b) => (a[1].criadoEm || 0) - (b[1].criadoEm || 0))
+      .map(
+        ([id, a]) => `
+        <div class="adiantamento-item" data-id="${id}">
+          <div class="adiantamento-item__info">
+            <span class="adiantamento-item__descricao">${_escaparHtml(a.descricao || "—")}</span>
+            <span class="adiantamento-item__valor">- ${Ui.formatarBRL(parseFloat(a.valor) || 0)}</span>
+          </div>
+          <button
+            type="button"
+            class="btn-excluir-adiantamento"
+            data-id="${id}"
+            aria-label="Excluir adiantamento"
+            title="Excluir"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+            </svg>
+          </button>
+        </div>
+      `,
+      )
+      .join("");
+
+    // Delegar evento de exclusão
+    lista.querySelectorAll(".btn-excluir-adiantamento").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.dataset.id;
+        try {
+          await Db.excluirAdiantamento(medicoAtivoId, mesAnoAtivo, id);
+          Ui.mostrarToast("Adiantamento excluído", "sucesso");
+        } catch (e) {
+          Ui.mostrarToast("Erro ao excluir adiantamento", "erro");
+        }
+      });
+    });
+  }
+
+  /**
+   * Escapa caracteres HTML para evitar XSS.
+   * @param {string} str
+   * @returns {string}
+   */
+  function _escaparHtml(str) {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  /**
+   * Abre o modal de novo adiantamento.
+   */
+  function abrirModalAdiantamento() {
+    const form = document.getElementById("form-adiantamento");
+    form.reset();
+    document.getElementById("modal-adiantamento").showModal();
+  }
+
+  /**
+   * Fecha o modal de novo adiantamento.
+   */
+  function fecharModalAdiantamento() {
+    document.getElementById("modal-adiantamento").close();
+  }
+
+  /**
+   * Submete o formulário de adiantamento.
+   * @param {Event} e
+   */
+  async function aoSubmeterAdiantamento(e) {
+    e.preventDefault();
+    if (!medicoAtivoId || !mesAnoAtivo) return;
+
+    const form = e.target;
+    const descricao = form.descricao.value.trim();
+    const valorRaw = (form.valor.value || "")
+      .replace(/[R$\s.]/g, "")
+      .replace(",", ".");
+    const valor = parseFloat(valorRaw) || 0;
+
+    if (!descricao || valor <= 0) {
+      Ui.mostrarToast("Preencha descrição e valor corretamente", "aviso");
+      return;
+    }
+
+    try {
+      await Db.adicionarAdiantamento(medicoAtivoId, mesAnoAtivo, {
+        descricao,
+        valor,
+      });
+      Ui.mostrarToast("Adiantamento salvo com sucesso!", "sucesso");
+      fecharModalAdiantamento();
+    } catch (err) {
+      console.error("Erro ao salvar adiantamento:", err);
+      Ui.mostrarToast("Erro ao salvar adiantamento", "erro");
+    }
+  }
+
+  /**
+   * Registra os eventos dos modais de extrato e adiantamento.
+   * Chamado uma única vez em registrarEventos().
+   */
+  /* ============================================================
+     PDF DO EXTRATO
+     ============================================================ */
+
+  /**
+   * Gera PDF do extrato do médico com os 4 cards e lista de adiantamentos.
+   */
+  function gerarPDFExtrato() {
+    if (!medicoAtivoId || !mesAnoAtivo) return;
+    if (!window.jspdf) {
+      Ui.mostrarToast("Biblioteca de PDF não carregada", "erro");
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const nomeMedico = _obterNomeMedicoAtivo();
+    const elMes = document.getElementById("extrato-mes-ref");
+    const mesTexto = elMes ? elMes.textContent : mesAnoAtivo;
+    const dataGeracao = new Date().toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const corPrimaria = [41, 98, 255];
+    const corCinza = [100, 116, 139];
+    const corBorda = [226, 232, 240];
+
+    // Faixa de título
+    doc.setFillColor(...corPrimaria);
+    doc.rect(0, 0, 210, 22, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("EXTRATO DE REPASSE MÉDICO", 14, 12);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${nomeMedico}  ·  ${mesTexto}`, 14, 18);
+
+    // Cards de resumo
+    const cards = document.querySelectorAll(".extrato-cards .card-resumo");
+    let yPos = 30;
+    doc.setTextColor(30, 30, 30);
+    const cardW = 43;
+    const cardH = 18;
+    let xCard = 14;
+    cards.forEach((card) => {
+      const titulo =
+        card.querySelector(".card-resumo__titulo")?.textContent.trim() || "";
+      const valor =
+        card.querySelector(".card-resumo__valor")?.textContent.trim() || "";
+      doc.setDrawColor(...corBorda);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(xCard, yPos, cardW, cardH, 2, 2, "FD");
+      doc.setFontSize(6.5);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...corCinza);
+      doc.text(titulo, xCard + 2, yPos + 6, { maxWidth: cardW - 4 });
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 30, 30);
+      doc.text(valor, xCard + 2, yPos + 14, { maxWidth: cardW - 4 });
+      xCard += cardW + 3;
+    });
+    yPos += cardH + 8;
+
+    // Seção de adiantamentos
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...corPrimaria);
+    doc.text("Adiantamentos do período", 14, yPos);
+    yPos += 6;
+
+    const entradas = Object.values(adiantamentosAtivos);
+    if (entradas.length === 0) {
+      doc.setFontSize(8.5);
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(...corCinza);
+      doc.text("Nenhum adiantamento lançado neste período.", 14, yPos);
+      yPos += 6;
+    } else {
+      doc.autoTable({
+        startY: yPos,
+        margin: { left: 14, right: 14 },
+        head: [["Descrição", "Valor"]],
+        body: entradas
+          .sort((a, b) => (a.criadoEm || 0) - (b.criadoEm || 0))
+          .map((a) => [
+            a.descricao || "—",
+            `- ${Ui.formatarBRL(parseFloat(a.valor) || 0)}`,
+          ]),
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        headStyles: {
+          fillColor: corPrimaria,
+          textColor: 255,
+          fontStyle: "bold",
+        },
+        columnStyles: {
+          1: { halign: "right", fontStyle: "bold", textColor: [245, 158, 11] },
+        },
+      });
+      yPos = doc.lastAutoTable.finalY + 8;
+    }
+
+    // Rodapé
+    const pageH = doc.internal.pageSize.getHeight();
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(...corCinza);
+    doc.text(
+      `Gerado em: ${dataGeracao}  ·  Clínica Oftalmo 15`,
+      105,
+      pageH - 6,
+      { align: "center" },
+    );
+
+    doc.save(`Extrato_${nomeMedico.replace(/\s+/g, "_")}_${mesAnoAtivo}.pdf`);
+    Ui.mostrarToast("PDF do extrato exportado!", "sucesso");
+  }
+
+  /* ============================================================
+     WHATSAPP
+     ============================================================ */
+
+  /**
+   * Monta mensagem de texto formatada e abre o WhatsApp Web.
+   */
+  function compartilharWhatsApp() {
+    const nomeMedico = _obterNomeMedicoAtivo();
+    const elMes = document.getElementById("extrato-mes-ref");
+    const mesTexto = elMes ? elMes.textContent : mesAnoAtivo;
+
+    const totalAdiantamentos = Object.values(adiantamentosAtivos).reduce(
+      (acc, a) => acc + (parseFloat(a.valor) || 0),
+      0,
+    );
+    const saldo = totalRecebidoExtrato - totalAdiantamentos;
+
+    const linhasAdiantamentos = Object.values(adiantamentosAtivos)
+      .sort((a, b) => (a.criadoEm || 0) - (b.criadoEm || 0))
+      .map(
+        (a) =>
+          `  • ${a.descricao}: - ${Ui.formatarBRL(parseFloat(a.valor) || 0)}`,
+      )
+      .join("\n");
+
+    const mensagem = [
+      `🏥 *EXTRATO DE REPASSE — ${nomeMedico.toUpperCase()}*`,
+      `📅 Período: ${mesTexto}`,
+      ``,
+
+      `💰 *Valor Líquido Total:* ${Ui.formatarBRL(totalLiquidoExtrato)}`,
+      `👨‍⚕️ *Repasse Médico:* ${Ui.formatarBRL(totalRecebidoExtrato)}`,
+      totalAdiantamentos > 0
+        ? `📋 *Adiantamentos:*\n${linhasAdiantamentos}\n  *Total:* - ${Ui.formatarBRL(totalAdiantamentos)}`
+        : `📋 *Adiantamentos:* Nenhum`,
+      ``,
+      `✅ *Saldo a Receber: ${Ui.formatarBRL(saldo)}*`,
+      ``,
+      `_Clínica Oftalmo 15_`,
+    ].join("\n");
+
+    const url = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  /* ============================================================
+     HISTÓRICO DOS ÚLTIMOS MESES
+     ============================================================ */
+
+  /**
+   * Carrega e renderiza o histórico dos últimos 6 meses do médico ativo.
+   */
+  async function _carregarHistorico() {
+    const container = document.getElementById("tabela-historico");
+    if (!container || !medicoAtivoId) return;
+
+    container.innerHTML = `<p class="extrato-adiantamentos__vazio">Carregando histórico...</p>`;
+
+    // Gera lista dos últimos 6 meses (excluindo o mês atual)
+    const meses = [];
+    const [anoAtual, mesAtual] = mesAnoAtivo.split("-").map(Number);
+    for (let i = 1; i <= 6; i++) {
+      let m = mesAtual - i;
+      let a = anoAtual;
+      if (m <= 0) {
+        m += 12;
+        a -= 1;
+      }
+      meses.push(`${a}-${String(m).padStart(2, "0")}`);
+    }
+
+    // Busca dados de cada mês em paralelo
+    const resultados = await Promise.all(
+      meses.map(async (mesAno) => {
+        const dados = await Db.obterRepasseUmaVez(medicoAtivoId, mesAno);
+        let repasseMedico = 0;
+        let totalAdiant = 0;
+
+        // Soma repasse médico dos convênios
+        if (dados.convenios) {
+          Object.values(dados.convenios).forEach((c) => {
+            const liq = parseFloat(c.valorLiquidoOrigem || 0);
+            const imp = parseFloat(c.impostos || 0);
+            const cus = parseFloat(c.custosPacotes || 0);
+            const tax = parseFloat(c.taxasCartao || 0);
+            const liquido = liq - (liq * imp) / 100 - cus - (liq * tax) / 100;
+            const percMed = parseFloat(c.percentualMedico || 60);
+            repasseMedico += parseFloat(((liquido * percMed) / 100).toFixed(2));
+          });
+        }
+        // Soma avulsos (rep. médico)
+        if (dados.avulsos) {
+          Object.values(dados.avulsos).forEach((av) => {
+            if (av.categoria !== "reembolso") {
+              repasseMedico += parseFloat(av.repasseMedico || 0);
+            }
+          });
+        }
+        // Adiantamentos via Db
+        const adiants = await new Promise((res) => {
+          const para = Db.ouvirAdiantamentos(medicoAtivoId, mesAno, (d) => {
+            para();
+            res(d);
+          });
+        });
+        if (adiants) {
+          Object.values(adiants).forEach((a) => {
+            totalAdiant += parseFloat(a.valor || 0);
+          });
+        }
+
+        const [ano, mes] = mesAno.split("-");
+        const nomeMes = new Date(ano, mes - 1).toLocaleString("pt-BR", {
+          month: "long",
+          year: "numeric",
+        });
+        return {
+          mesAno,
+          nomeMes: nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1),
+          repasseMedico,
+          totalAdiant,
+          saldo: repasseMedico - totalAdiant,
+          temDados: repasseMedico > 0 || totalAdiant > 0,
+        };
+      }),
+    );
+
+    const comDados = resultados.filter((r) => r.temDados);
+    if (comDados.length === 0) {
+      container.innerHTML = `<p class="extrato-adiantamentos__vazio">Nenhum dado encontrado nos meses anteriores.</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="historico-tabela">
+        <div class="historico-tabela__head">
+          <span>Mês</span>
+          <span>Repasse Médico</span>
+          <span>Adiantamentos</span>
+          <span>Saldo</span>
+          <span>Status</span>
+        </div>
+        ${comDados
+          .map(
+            (r) => `
+          <div class="historico-tabela__row">
+            <span class="historico-tabela__mes">${r.nomeMes}</span>
+            <span class="historico-tabela__valor">${Ui.formatarBRL(r.repasseMedico)}</span>
+            <span class="historico-tabela__adiant">${r.totalAdiant > 0 ? `- ${Ui.formatarBRL(r.totalAdiant)}` : "—"}</span>
+            <span class="historico-tabela__saldo ${r.saldo < 0 ? "historico-tabela__saldo--negativo" : ""}">${Ui.formatarBRL(r.saldo)}</span>
+            <span class="historico-badge ${r.pago ? "historico-badge--pago" : "historico-badge--pendente"}">${r.pago ? "Pago" : "Pendente"}</span>
+          </div>
+        `,
+          )
+          .join("")}
+      </div>
+    `;
+  }
+
+  function registrarEventosExtrato() {
+    // Botão voltar da página extrato
+    document
+      .getElementById("btn-voltar-extrato")
+      .addEventListener("click", fecharModalExtrato);
+
+    // PDF do extrato
+    document
+      .getElementById("btn-pdf-extrato")
+      .addEventListener("click", gerarPDFExtrato);
+
+    // WhatsApp
+    document
+      .getElementById("btn-whatsapp-extrato")
+      .addEventListener("click", compartilharWhatsApp);
+
+    // Abrir modal adiantamento
+    document
+      .getElementById("btn-novo-adiantamento")
+      .addEventListener("click", abrirModalAdiantamento);
+
+    // Fechar modal adiantamento (botão X e botão Cancelar)
+    document
+      .querySelectorAll(".modal__fechar--adiantamento")
+      .forEach((btn) => btn.addEventListener("click", fecharModalAdiantamento));
+
+    document
+      .getElementById("modal-adiantamento")
+      .addEventListener("click", (e) => {
+        if (e.target.id === "modal-adiantamento") fecharModalAdiantamento();
+      });
+
+    // Submit do form de adiantamento
+    document
+      .getElementById("form-adiantamento")
+      .addEventListener("submit", aoSubmeterAdiantamento);
   }
 
   /* ============================================================

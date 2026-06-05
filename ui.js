@@ -1081,6 +1081,105 @@ window.Ui = (() => {
   }
 
   /* ============================================================
+     EXTRATO DO MÉDICO
+     ============================================================ */
+
+  /**
+   * Renderiza (ou atualiza) o card clicável do médico nos cards de repasse.
+   * Inserido após os demais cards. Se já existir, substitui.
+   * @param {string} nomeMedico
+   * @param {Function} aoClicar
+   */
+  function renderizarCardMedico(nomeMedico, aoClicar) {
+    const container = document.querySelector(".repasses-cards");
+    if (!container) return;
+
+    const idCard = "card-medico-extrato";
+    let card = document.getElementById(idCard);
+    if (!card) {
+      card = document.createElement("article");
+      card.id = idCard;
+      card.className = "card-resumo card-resumo--medico";
+      container.appendChild(card);
+    }
+
+    card.innerHTML = `
+      <header class="card-resumo__cabecalho">
+        <h3 class="card-resumo__titulo">Extrato Médico</h3>
+        <div class="card-resumo__icone">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+      </header>
+      <p class="card-resumo__valor card-resumo__valor--medico">${nomeMedico}</p>
+      <p class="card-resumo__descricao">Ver adiantamentos e saldo a receber →</p>
+    `;
+    card.style.cursor = "pointer";
+    card.onclick = aoClicar;
+  }
+
+  /**
+   * Remove o card clicável do médico (ao trocar de médico ou limpar view).
+   */
+  function removerCardMedico() {
+    const card = document.getElementById("card-medico-extrato");
+    if (card) card.remove();
+  }
+
+  /**
+   * Renderiza os 4 cards dentro do modal de extrato do médico.
+   * @param {{ nomeMedico: string, valorLiquido: number, repasseMedico: number, totalAdiantamentos: number }} dados
+   */
+  function renderizarCardsExtrato(dados) {
+    const container = document.querySelector(".extrato-cards");
+    if (!container) return;
+
+    const saldo = dados.repasseMedico - dados.totalAdiantamentos;
+
+    const cards = [
+      {
+        titulo: "Valor Líquido Total",
+        valor: formatarBRL(dados.valorLiquido),
+        descricao: "Total após deduções do período",
+        classe: "card-resumo--faturamento",
+      },
+      {
+        titulo: `Repasse — ${dados.nomeMedico}`,
+        valor: formatarBRL(dados.repasseMedico),
+        descricao: "Repasse médico total do período",
+        classe: "card-resumo--financeiro",
+      },
+      {
+        titulo: "Adiantamentos",
+        valor: `- ${formatarBRL(dados.totalAdiantamentos)}`,
+        descricao: "Total de adiantamentos no período",
+        classe: "card-resumo--adiantamento",
+      },
+      {
+        titulo: "Saldo a Receber",
+        valor: formatarBRL(saldo),
+        descricao: "Repasse médico menos adiantamentos",
+        classe: saldo >= 0 ? "card-resumo--producao" : "card-resumo--negativo",
+      },
+    ];
+
+    container.innerHTML = cards
+      .map(
+        (c) => `
+      <article class="card-resumo ${c.classe}">
+        <header class="card-resumo__cabecalho">
+          <h3 class="card-resumo__titulo">${c.titulo}</h3>
+        </header>
+        <p class="card-resumo__valor">${c.valor}</p>
+        <p class="card-resumo__descricao">${c.descricao}</p>
+      </article>
+    `,
+      )
+      .join("");
+  }
+
+  /* ============================================================
      API PÚBLICA
      ============================================================ */
 
@@ -1109,5 +1208,8 @@ window.Ui = (() => {
     resetarPagina,
     irParaPagina,
     Icones,
+    renderizarCardMedico,
+    removerCardMedico,
+    renderizarCardsExtrato,
   };
 })();
