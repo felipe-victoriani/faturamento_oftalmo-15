@@ -1323,6 +1323,170 @@ input[type="number"] {
 }
 
 /* ============================================================
+   EXTRATO — NAVEGAÇÃO DE MESES
+   ============================================================ */
+
+.extrato-nav-mes {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.extrato-nav-mes__btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--texto-secundario, #6b7280);
+  padding: 4px;
+  border-radius: var(--raio, 8px);
+  display: flex;
+  align-items: center;
+  transition:
+    color 0.15s,
+    background 0.15s;
+  flex-shrink: 0;
+}
+
+.extrato-nav-mes__btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.extrato-nav-mes__btn:hover {
+  color: var(--primaria, #6366f1);
+  background: var(--bg-hover, #f3f4f6);
+}
+
+/* ============================================================
+   EXTRATO — BADGE DE STATUS
+   ============================================================ */
+
+.extrato-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.extrato-status-badge--pago {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.extrato-status-badge--pendente {
+  background: #fef9c3;
+  color: #b45309;
+}
+
+/* ============================================================
+   EXTRATO — SEÇÃO DE STATUS E OBSERVAÇÃO
+   ============================================================ */
+
+.extrato-status-secao {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--borda, #e5e7eb);
+  border-radius: var(--raio, 8px);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.extrato-status-secao__linha {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.extrato-status-secao__label {
+  font-size: 0.85rem;
+  color: var(--texto-secundario, #6b7280);
+  white-space: nowrap;
+}
+
+.extrato-status-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.extrato-status-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.extrato-status-btn--pendente {
+  background: #fef9c3;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.extrato-status-btn--pendente:hover {
+  background: #fde68a;
+}
+
+.extrato-status-btn--pago {
+  background: #dcfce7;
+  color: #16a34a;
+  border-color: #bbf7d0;
+}
+
+.extrato-status-btn--pago:hover {
+  background: #bbf7d0;
+}
+
+/* ============================================================
+   EXTRATO — OBSERVAÇÃO
+   ============================================================ */
+
+.extrato-obs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.extrato-obs__label {
+  font-size: 0.8rem;
+  color: var(--texto-secundario, #6b7280);
+  font-weight: 500;
+}
+
+.extrato-obs__textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 3.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  border: 1px solid var(--borda, #e5e7eb);
+  border-radius: var(--raio, 8px);
+  background: var(--bg, #f9fafb);
+  color: var(--texto-primario, #111827);
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.extrato-obs__textarea:focus {
+  outline: none;
+  border-color: var(--primaria, #6366f1);
+}
+
+/* ============================================================
    MODAL NOVO ADIANTAMENTO
    ============================================================ */
 

@@ -796,7 +796,19 @@ window.Db = (() => {
   function salvarStatusRepasse(medicoId, mesAno, pago) {
     return firebaseDb
       .ref(`repasses/status/${medicoId}/${mesAno}`)
-      .set({ pago, atualizadoEm: Date.now() });
+      .update({ pago, atualizadoEm: Date.now() });
+  }
+
+  /**
+   * Salva a observação de um médico/mês.
+   * @param {string} medicoId
+   * @param {string} mesAno
+   * @param {string} observacao
+   */
+  function salvarObservacaoRepasse(medicoId, mesAno, observacao) {
+    return firebaseDb
+      .ref(`repasses/status/${medicoId}/${mesAno}`)
+      .update({ observacao });
   }
 
   /**
@@ -808,6 +820,19 @@ window.Db = (() => {
   async function obterRepasseUmaVez(medicoId, mesAno) {
     const snap = await firebaseDb
       .ref(`repasses/lancamentos/${medicoId}/${mesAno}`)
+      .once("value");
+    return snap.val() || {};
+  }
+
+  /**
+   * Lê (uma vez) o status de pagamento de um médico/mês — usado pelo histórico.
+   * @param {string} medicoId
+   * @param {string} mesAno
+   * @returns {Promise<{pago: boolean}>}
+   */
+  async function obterStatusUmaVez(medicoId, mesAno) {
+    const snap = await firebaseDb
+      .ref(`repasses/status/${medicoId}/${mesAno}`)
       .once("value");
     return snap.val() || {};
   }
@@ -918,6 +943,8 @@ window.Db = (() => {
     // Status do repasse
     ouvirStatusRepasse,
     salvarStatusRepasse,
+    salvarObservacaoRepasse,
     obterRepasseUmaVez,
+    obterStatusUmaVez,
   };
 })();

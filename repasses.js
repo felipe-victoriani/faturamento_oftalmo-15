@@ -2082,6 +2082,9 @@ window.Repasses = (() => {
   /** @type {Function|null} Para de ouvir adiantamentos no Firebase */
   let pararOuvirAdiantamentos = null;
 
+  /** @type {Function|null} Para de ouvir status no Firebase */
+  let pararOuvirStatusExtrato = null;
+
   /** @type {Object} Cache dos adiantamentos ativos */
   let adiantamentosAtivos = {};
 
@@ -2090,6 +2093,12 @@ window.Repasses = (() => {
 
   /** @type {number} Cache do totalValorLiquido para o extrato */
   let totalLiquidoExtrato = 0;
+
+  /** @type {string|null} Mês/ano sendo exibido no extrato (pode diferir do mês da view principal) */
+  let mesAnoExtrato = null;
+
+  /** @type {number|null} Timeout do debounce da observação */
+  let _debounceObservacao = null;
 
   /**
    * Abre o modal de extrato do médico.
@@ -2100,44 +2109,24 @@ window.Repasses = (() => {
 
     const pagina = document.getElementById("view-extrato-medico");
 
-    // Preenche nome do médico e mês no header da página
+    // Preenche nome do médico no header
     const nomeMedico = _obterNomeMedicoAtivo();
     const elNome = document.getElementById("extrato-nome-medico");
-    const elMes = document.getElementById("extrato-mes-ref");
     if (elNome) elNome.textContent = nomeMedico;
-    if (elMes) {
-      const [ano, mes] = mesAnoAtivo.split("-");
-      const nomeMes = new Date(ano, mes - 1).toLocaleString("pt-BR", {
-        month: "long",
-        year: "numeric",
-      });
-      elMes.textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
-    }
 
-    // Captura os totais atuais dos cards
+    // Captura os totais atuais dos cards (já carregados na view principal)
     totalRecebidoExtrato = _lerValorCard("Total Recebido") || 0;
     totalLiquidoExtrato = _lerValorCard("Valor Líquido") || 0;
 
-    // Inicia listener em tempo real para adiantamentos
-    if (pararOuvirAdiantamentos) pararOuvirAdiantamentos();
-    pararOuvirAdiantamentos = Db.ouvirAdiantamentos(
-      medicoAtivoId,
-      mesAnoAtivo,
-      (dados) => {
-        adiantamentosAtivos = dados || {};
-        _atualizarExtratoUI();
-      },
-    );
-
-    // Carrega histórico dos últimos 6 meses
-    _carregarHistorico();
-
     pagina.classList.remove("extrato-pagina--oculta");
     pagina.scrollTop = 0;
+
+    // Carrega o mês atual
+    _recarregarExtratoParaMes(mesAnoAtivo);
   }
 
   /**
-   * Fecha a página de extrato e para de ouvir adiantamentos.
+   * Fecha a página de extrato e para de ouvir listeners.
    */
   function fecharModalExtrato() {
     const pagina = document.getElementById("view-extrato-medico");
@@ -2146,7 +2135,220 @@ window.Repasses = (() => {
       pararOuvirAdiantamentos();
       pararOuvirAdiantamentos = null;
     }
+    if (pararOuvirStatusExtrato) {
+      pararOuvirStatusExtrato();
+      pararOuvirStatusExtrato = null;
+    }
     adiantamentosAtivos = {};
+    mesAnoExtrato = null;
+  }
+
+  /**
+   * Navega para o mês anterior (-1) ou próximo (+1) no extrato.
+   * @param {number} delta -1 ou +1
+   */
+  function _navegarMesExtrato(delta) {
+    if (!mesAnoExtrato) return;
+    const [ano, mes] = mesAnoExtrato.split("-").map(Number);
+    let novoMes = mes + delta;
+    let novoAno = ano;
+    if (novoMes < 1) {
+      novoMes = 12;
+      novoAno--;
+    }
+    if (novoMes > 12) {
+      novoMes = 1;
+      novoAno++;
+    }
+    const novoMesAno = `${novoAno}-${String(novoMes).padStart(2, "0")}`;
+    _recarregarExtratoParaMes(novoMesAno);
+  }
+
+  /**
+   * Recarrega o extrato para um mês/ano específico.
+   * Para os listeners anteriores, atualiza o header e reinicia tudo.
+   * @param {string} mesAno
+   */
+  async function _recarregarExtratoParaMes(mesAno) {
+    if (!medicoAtivoId) return;
+    mesAnoExtrato = mesAno;
+
+    // Para listeners anteriores
+    if (pararOuvirAdiantamentos) {
+      pararOuvirAdiantamentos();
+      pararOuvirAdiantamentos = null;
+    }
+    if (pararOuvirStatusExtrato) {
+      pararOuvirStatusExtrato();
+      pararOuvirStatusExtrato = null;
+    }
+
+    // Zera cache imediatamente para não exibir dados do mês anterior
+    adiantamentosAtivos = {};
+    totalRecebidoExtrato = 0;
+    totalLiquidoExtrato = 0;
+    _atualizarExtratoUI();
+    _atualizarStatusUI(false);
+
+    // Atualiza o texto do mês no header
+    const elMes = document.getElementById("extrato-mes-ref");
+    if (elMes) {
+      const [ano, mes] = mesAno.split("-");
+      const nomeMes = new Date(ano, mes - 1).toLocaleString("pt-BR", {
+        month: "long",
+        year: "numeric",
+      });
+      elMes.textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+    }
+
+    // Limpa observação
+    const elObs = document.getElementById("extrato-observacao");
+    if (elObs) elObs.value = "";
+
+    // Carrega totais do novo mês ANTES de registrar os listeners
+    // para que quando o Firebase disparar, os totais já estejam corretos
+    if (mesAno === mesAnoAtivo) {
+      totalRecebidoExtrato = _lerValorCard("Total Recebido") || 0;
+      totalLiquidoExtrato = _lerValorCard("Valor Líquido") || 0;
+    } else {
+      const totais = await _calcularTotaisParaMes(mesAno);
+      // Verifica se o usuário já navegou para outro mês enquanto aguardava
+      if (mesAnoExtrato !== mesAno) return;
+      totalRecebidoExtrato = totais.repasseMedico;
+      totalLiquidoExtrato = totais.valorLiquido;
+    }
+
+    // Só registra os listeners depois que os totais estão prontos
+    // Assim o primeiro disparo do Firebase já usa valores corretos
+    pararOuvirAdiantamentos = Db.ouvirAdiantamentos(
+      medicoAtivoId,
+      mesAno,
+      (dados) => {
+        adiantamentosAtivos = dados || {};
+        _atualizarExtratoUI();
+      },
+    );
+
+    let _statusAnterior = null;
+    pararOuvirStatusExtrato = Db.ouvirStatusRepasse(
+      medicoAtivoId,
+      mesAno,
+      (status) => {
+        const pagoAtual = status.pago || false;
+        _atualizarStatusUI(pagoAtual);
+        if (elObs && document.activeElement !== elObs) {
+          elObs.value = status.observacao || "";
+        }
+        // Recarrega o histórico somente quando o status pago realmente mudar
+        if (_statusAnterior !== null && _statusAnterior !== pagoAtual) {
+          _carregarHistoricoParaMes(mesAnoExtrato || mesAno);
+        }
+        _statusAnterior = pagoAtual;
+      },
+    );
+
+    // Recarrega histórico relativo ao novo mês
+    _carregarHistoricoParaMes(mesAno);
+  }
+
+  /**
+   * Calcula repasseMedico e valorLiquido de um mês a partir do Firebase.
+   * @param {string} mesAno
+   * @returns {Promise<{repasseMedico: number, valorLiquido: number}>}
+   */
+  async function _calcularTotaisParaMes(mesAno) {
+    const dados = await Db.obterRepasseUmaVez(medicoAtivoId, mesAno);
+    let repasseMedico = 0;
+    let valorLiquido = 0;
+
+    if (dados.convenios) {
+      Object.values(dados.convenios).forEach((c) => {
+        const liq = parseFloat(c.valorLiquidoOrigem || 0);
+        const imp = parseFloat(c.impostos || 0);
+        const cus = parseFloat(c.custosPacotes || 0);
+        const tax = parseFloat(c.taxasCartao || 0);
+        const liquido = liq - (liq * imp) / 100 - cus - (liq * tax) / 100;
+        valorLiquido += liquido;
+        const percMed = parseFloat(c.percentualMedico || 60);
+        repasseMedico += parseFloat(((liquido * percMed) / 100).toFixed(2));
+      });
+    }
+    if (dados.avulsos) {
+      Object.values(dados.avulsos).forEach((av) => {
+        if (av.categoria !== "reembolso") {
+          valorLiquido += parseFloat(av.valorLiquidoFinal || 0);
+          repasseMedico += parseFloat(av.repasseMedico || 0);
+        }
+      });
+    }
+    return { repasseMedico, valorLiquido };
+  }
+
+  /**
+   * Atualiza o badge e botão de status pago/pendente.
+   * @param {boolean} pago
+   */
+  function _atualizarStatusUI(pago) {
+    const badge = document.getElementById("extrato-status-badge");
+    const btn = document.getElementById("btn-toggle-pago");
+    const texto = document.getElementById("texto-status-pago");
+    const iconPago = document.getElementById("icon-status-pago");
+    const iconPendente = document.getElementById("icon-status-pendente");
+
+    if (badge) {
+      badge.textContent = pago ? "Pago" : "Pendente";
+      badge.className = `extrato-status-badge ${pago ? "extrato-status-badge--pago" : "extrato-status-badge--pendente"}`;
+    }
+    if (btn) {
+      btn.className = `extrato-status-btn ${pago ? "extrato-status-btn--pago" : "extrato-status-btn--pendente"}`;
+    }
+    if (texto)
+      texto.textContent = pago ? "Marcar como Pendente" : "Marcar como Pago";
+    if (iconPago) iconPago.style.display = pago ? "inline" : "none";
+    if (iconPendente) iconPendente.style.display = pago ? "none" : "inline";
+  }
+
+  /**
+   * Copia o resumo do extrato para a área de transferência.
+   */
+  async function copiarResumo() {
+    const nomeMedico = _obterNomeMedicoAtivo();
+    const elMes = document.getElementById("extrato-mes-ref");
+    const mesTexto = elMes ? elMes.textContent : mesAnoExtrato;
+
+    const totalAdiantamentos = Object.values(adiantamentosAtivos).reduce(
+      (acc, a) => acc + (parseFloat(a.valor) || 0),
+      0,
+    );
+    const saldo = totalRecebidoExtrato - totalAdiantamentos;
+
+    const linhasAdiantamentos = Object.values(adiantamentosAtivos)
+      .sort((a, b) => (a.criadoEm || 0) - (b.criadoEm || 0))
+      .map(
+        (a) =>
+          `  • ${a.descricao}: - ${Ui.formatarBRL(parseFloat(a.valor) || 0)}`,
+      )
+      .join("\n");
+
+    const mensagem = [
+      `EXTRATO DE REPASSE — ${nomeMedico.toUpperCase()}`,
+      `Período: ${mesTexto}`,
+      ``,
+      `Valor Líquido Total: ${Ui.formatarBRL(totalLiquidoExtrato)}`,
+      `Repasse Médico: ${Ui.formatarBRL(totalRecebidoExtrato)}`,
+      totalAdiantamentos > 0
+        ? `Adiantamentos:\n${linhasAdiantamentos}\n  Total: - ${Ui.formatarBRL(totalAdiantamentos)}`
+        : `Adiantamentos: Nenhum`,
+      ``,
+      `Saldo a Receber: ${Ui.formatarBRL(saldo)}`,
+    ].join("\n");
+
+    try {
+      await navigator.clipboard.writeText(mensagem);
+      Ui.mostrarToast("Resumo copiado!", "sucesso");
+    } catch {
+      Ui.mostrarToast("Erro ao copiar resumo", "erro");
+    }
   }
 
   /**
@@ -2532,17 +2734,18 @@ window.Repasses = (() => {
      ============================================================ */
 
   /**
-   * Carrega e renderiza o histórico dos últimos 6 meses do médico ativo.
+   * Carrega e renderiza o histórico dos últimos 6 meses relativo a um mês base.
+   * @param {string} mesAnoBase
    */
-  async function _carregarHistorico() {
+  async function _carregarHistoricoParaMes(mesAnoBase) {
     const container = document.getElementById("tabela-historico");
     if (!container || !medicoAtivoId) return;
 
     container.innerHTML = `<p class="extrato-adiantamentos__vazio">Carregando histórico...</p>`;
 
-    // Gera lista dos últimos 6 meses (excluindo o mês atual)
+    // Gera lista dos últimos 6 meses (excluindo o mês base)
     const meses = [];
-    const [anoAtual, mesAtual] = mesAnoAtivo.split("-").map(Number);
+    const [anoAtual, mesAtual] = mesAnoBase.split("-").map(Number);
     for (let i = 1; i <= 6; i++) {
       let m = mesAtual - i;
       let a = anoAtual;
@@ -2580,18 +2783,23 @@ window.Repasses = (() => {
             }
           });
         }
-        // Adiantamentos via Db
-        const adiants = await new Promise((res) => {
-          const para = Db.ouvirAdiantamentos(medicoAtivoId, mesAno, (d) => {
-            para();
-            res(d);
-          });
-        });
-        if (adiants) {
-          Object.values(adiants).forEach((a) => {
+        // Adiantamentos e status em paralelo
+        const [adiantsSnap, statusSnap] = await Promise.all([
+          new Promise((res) => {
+            const para = Db.ouvirAdiantamentos(medicoAtivoId, mesAno, (d) => {
+              para();
+              res(d);
+            });
+          }),
+          Db.obterStatusUmaVez(medicoAtivoId, mesAno),
+        ]);
+        if (adiantsSnap) {
+          Object.values(adiantsSnap).forEach((a) => {
             totalAdiant += parseFloat(a.valor || 0);
           });
         }
+
+        const pago = statusSnap.pago || false;
 
         const [ano, mes] = mesAno.split("-");
         const nomeMes = new Date(ano, mes - 1).toLocaleString("pt-BR", {
@@ -2603,6 +2811,7 @@ window.Repasses = (() => {
           nomeMes: nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1),
           repasseMedico,
           totalAdiant,
+          pago,
           saldo: repasseMedico - totalAdiant,
           temDados: repasseMedico > 0 || totalAdiant > 0,
         };
@@ -2645,22 +2854,73 @@ window.Repasses = (() => {
     // Botão voltar da página extrato
     document
       .getElementById("btn-voltar-extrato")
-      .addEventListener("click", fecharModalExtrato);
+      ?.addEventListener("click", fecharModalExtrato);
 
     // PDF do extrato
     document
       .getElementById("btn-pdf-extrato")
-      .addEventListener("click", gerarPDFExtrato);
+      ?.addEventListener("click", gerarPDFExtrato);
 
     // WhatsApp
     document
       .getElementById("btn-whatsapp-extrato")
-      .addEventListener("click", compartilharWhatsApp);
+      ?.addEventListener("click", compartilharWhatsApp);
+
+    // Copiar resumo
+    document
+      .getElementById("btn-copiar-extrato")
+      ?.addEventListener("click", copiarResumo);
+
+    // Navegação entre meses
+    document
+      .getElementById("btn-mes-anterior")
+      ?.addEventListener("click", () => _navegarMesExtrato(-1));
+    document
+      .getElementById("btn-mes-proximo")
+      ?.addEventListener("click", () => _navegarMesExtrato(1));
+
+    // Toggle status pago/pendente
+    document
+      .getElementById("btn-toggle-pago")
+      ?.addEventListener("click", async () => {
+        if (!medicoAtivoId || !mesAnoExtrato) return;
+        const badge = document.getElementById("extrato-status-badge");
+        const pagoAtual =
+          badge && badge.classList.contains("extrato-status-badge--pago");
+        try {
+          await Db.salvarStatusRepasse(
+            medicoAtivoId,
+            mesAnoExtrato,
+            !pagoAtual,
+          );
+        } catch {
+          Ui.mostrarToast("Erro ao atualizar status", "erro");
+        }
+      });
+
+    // Observação com debounce de 1.2s
+    document
+      .getElementById("extrato-observacao")
+      ?.addEventListener("input", (e) => {
+        clearTimeout(_debounceObservacao);
+        _debounceObservacao = setTimeout(async () => {
+          if (!medicoAtivoId || !mesAnoExtrato) return;
+          try {
+            await Db.salvarObservacaoRepasse(
+              medicoAtivoId,
+              mesAnoExtrato,
+              e.target.value.trim(),
+            );
+          } catch {
+            Ui.mostrarToast("Erro ao salvar observação", "erro");
+          }
+        }, 1200);
+      });
 
     // Abrir modal adiantamento
     document
       .getElementById("btn-novo-adiantamento")
-      .addEventListener("click", abrirModalAdiantamento);
+      ?.addEventListener("click", abrirModalAdiantamento);
 
     // Fechar modal adiantamento (botão X e botão Cancelar)
     document
@@ -2694,7 +2954,11 @@ window.Repasses = (() => {
         if (btnExcluir) {
           const id = btnExcluir.dataset.id;
           try {
-            await Db.excluirAdiantamento(medicoAtivoId, mesAnoAtivo, id);
+            await Db.excluirAdiantamento(
+              medicoAtivoId,
+              mesAnoExtrato || mesAnoAtivo,
+              id,
+            );
             Ui.mostrarToast("Adiantamento excluído", "sucesso");
           } catch (err) {
             Ui.mostrarToast("Erro ao excluir adiantamento", "erro");
