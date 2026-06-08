@@ -1290,6 +1290,38 @@ input[type="number"] {
   background: #fee2e2;
 }
 
+.btn-editar-adiantamento {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--texto-secundario, #6b7280);
+  padding: 4px;
+  border-radius: var(--raio, 8px);
+  transition:
+    color 0.15s,
+    background 0.15s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.btn-editar-adiantamento svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-editar-adiantamento:hover {
+  color: #3b82f6;
+  background: #dbeafe;
+}
+
+.adiantamento-item__acoes {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
 /* ============================================================
    MODAL NOVO ADIANTAMENTO
    ============================================================ */

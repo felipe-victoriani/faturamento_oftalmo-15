@@ -847,6 +847,20 @@ window.Db = (() => {
   }
 
   /**
+   * Atualiza um adiantamento existente.
+   * @param {string} medicoId
+   * @param {string} mesAno
+   * @param {string} id
+   * @param {{ descricao: string, valor: number }} dados
+   * @returns {Promise<void>}
+   */
+  function atualizarAdiantamento(medicoId, mesAno, id, dados) {
+    return firebaseDb
+      .ref(`repasses/adiantamentos/${medicoId}/${mesAno}/${id}`)
+      .update(dados);
+  }
+
+  /**
    * Exclui um adiantamento pelo ID.
    * @param {string} medicoId
    * @param {string} mesAno
@@ -899,6 +913,7 @@ window.Db = (() => {
     // Adiantamentos
     ouvirAdiantamentos,
     adicionarAdiantamento,
+    atualizarAdiantamento,
     excluirAdiantamento,
     // Status do repasse
     ouvirStatusRepasse,

@@ -2220,34 +2220,36 @@ window.Repasses = (() => {
             <span class="adiantamento-item__descricao">${_escaparHtml(a.descricao || "—")}</span>
             <span class="adiantamento-item__valor">- ${Ui.formatarBRL(parseFloat(a.valor) || 0)}</span>
           </div>
-          <button
-            type="button"
-            class="btn-excluir-adiantamento"
-            data-id="${id}"
-            aria-label="Excluir adiantamento"
-            title="Excluir"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-            </svg>
-          </button>
+          <div class="adiantamento-item__acoes">
+            <button
+              type="button"
+              class="btn-editar-adiantamento"
+              data-id="${id}"
+              data-descricao="${_escaparHtml(a.descricao || "")}"
+              data-valor="${parseFloat(a.valor) || 0}"
+              aria-label="Editar adiantamento"
+              title="Editar"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="btn-excluir-adiantamento"
+              data-id="${id}"
+              aria-label="Excluir adiantamento"
+              title="Excluir"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+              </svg>
+            </button>
+          </div>
         </div>
       `,
       )
       .join("");
-
-    // Delegar evento de exclusão
-    lista.querySelectorAll(".btn-excluir-adiantamento").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const id = btn.dataset.id;
-        try {
-          await Db.excluirAdiantamento(medicoAtivoId, mesAnoAtivo, id);
-          Ui.mostrarToast("Adiantamento excluído", "sucesso");
-        } catch (e) {
-          Ui.mostrarToast("Erro ao excluir adiantamento", "erro");
-        }
-      });
-    });
   }
 
   /**
@@ -2269,6 +2271,32 @@ window.Repasses = (() => {
   function abrirModalAdiantamento() {
     const form = document.getElementById("form-adiantamento");
     form.reset();
+    form.dataset.modo = "novo";
+    delete form.dataset.adiantamentoId;
+    document.getElementById("modal-adiantamento-titulo").textContent =
+      "Novo Adiantamento";
+    document.getElementById("btn-salvar-adiantamento").textContent =
+      "Salvar adiantamento";
+    document.getElementById("modal-adiantamento").showModal();
+  }
+
+  /**
+   * Abre o modal de adiantamento preenchido para edição.
+   * @param {string} id
+   * @param {{ descricao: string, valor: number }} dados
+   */
+  function abrirModalEdicaoAdiantamento(id, dados) {
+    const form = document.getElementById("form-adiantamento");
+    form.reset();
+    form.dataset.modo = "editar";
+    form.dataset.adiantamentoId = id;
+    document.getElementById("modal-adiantamento-titulo").textContent =
+      "Editar Adiantamento";
+    document.getElementById("btn-salvar-adiantamento").textContent =
+      "Salvar alterações";
+    document.getElementById("adiantamento-descricao").value =
+      dados.descricao || "";
+    document.getElementById("adiantamento-valor").value = dados.valor || "";
     document.getElementById("modal-adiantamento").showModal();
   }
 
@@ -2300,11 +2328,21 @@ window.Repasses = (() => {
     }
 
     try {
-      await Db.adicionarAdiantamento(medicoAtivoId, mesAnoAtivo, {
-        descricao,
-        valor,
-      });
-      Ui.mostrarToast("Adiantamento salvo com sucesso!", "sucesso");
+      if (form.dataset.modo === "editar" && form.dataset.adiantamentoId) {
+        await Db.atualizarAdiantamento(
+          medicoAtivoId,
+          mesAnoAtivo,
+          form.dataset.adiantamentoId,
+          { descricao, valor },
+        );
+        Ui.mostrarToast("Adiantamento atualizado com sucesso!", "sucesso");
+      } else {
+        await Db.adicionarAdiantamento(medicoAtivoId, mesAnoAtivo, {
+          descricao,
+          valor,
+        });
+        Ui.mostrarToast("Adiantamento salvo com sucesso!", "sucesso");
+      }
       fecharModalAdiantamento();
     } catch (err) {
       console.error("Erro ao salvar adiantamento:", err);
@@ -2639,6 +2677,30 @@ window.Repasses = (() => {
     document
       .getElementById("form-adiantamento")
       .addEventListener("submit", aoSubmeterAdiantamento);
+
+    // Delegação de eventos para editar/excluir adiantamentos
+    document
+      .getElementById("lista-adiantamentos")
+      .addEventListener("click", async (e) => {
+        const btnEditar = e.target.closest(".btn-editar-adiantamento");
+        if (btnEditar) {
+          const id = btnEditar.dataset.id;
+          const descricao = btnEditar.dataset.descricao;
+          const valor = parseFloat(btnEditar.dataset.valor) || 0;
+          abrirModalEdicaoAdiantamento(id, { descricao, valor });
+          return;
+        }
+        const btnExcluir = e.target.closest(".btn-excluir-adiantamento");
+        if (btnExcluir) {
+          const id = btnExcluir.dataset.id;
+          try {
+            await Db.excluirAdiantamento(medicoAtivoId, mesAnoAtivo, id);
+            Ui.mostrarToast("Adiantamento excluído", "sucesso");
+          } catch (err) {
+            Ui.mostrarToast("Erro ao excluir adiantamento", "erro");
+          }
+        }
+      });
   }
 
   /* ============================================================
